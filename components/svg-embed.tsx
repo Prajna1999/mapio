@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import WorldSVG from "@/public/world_mercator_projection.svg"
 interface SVGEmbedProps {
     src: string
     alt: string
@@ -14,7 +13,7 @@ interface SVGEmbedProps {
 }
 
 export default function SVGEmbed({
-    src = "public/word_mercator_india_highlighted.svg",
+    src = "/word_mercator_india_highlighted.svg",
     alt = "SVG Image",
     title,
     description,

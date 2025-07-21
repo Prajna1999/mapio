@@ -48,15 +48,19 @@ export default function Page() {
             trigger={<SVGEmbed src="/world_mercator_india_highlighted.svg" alt="World Map" />}
             title="Edit Map Configuration"
             description="Customize your map settings and preferences."
-            actions={<Button type="submit">Save changes</Button>}
+          // actions={<Button type="submit">Save changes</Button>}
           >
             <div className="grid gap-3">
-              <Label htmlFor="map-title">Map Title</Label>
-              <Input id="map-title" name="title" defaultValue="World Map" />
+              <Label htmlFor="map-description">States of India</Label>
+              <SVGEmbed src="/states_of_india_black.svg" alt="India Map" />
             </div>
             <div className="grid gap-3">
-              <Label htmlFor="map-description">Description</Label>
-              <Input id="map-description" name="description" defaultValue="Interactive world map" />
+              <Label htmlFor="map-description">Districts of India</Label>
+              <SVGEmbed src="/india_district_maps_black_enlarged.svg" alt="India Map" />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="map-description">Loksabha Constituencies of India</Label>
+              <SVGEmbed src="/india_loksabha_constituencies.svg" alt="India Map" />
             </div>
           </CardDialog>
         </div>

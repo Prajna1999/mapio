@@ -15,7 +15,7 @@ interface CardDialogProps {
     trigger: ReactNode
     title: string
     description?: string
-    children: ReactNode
+    children?: ReactNode
     actions?: ReactNode
     className?: string
     showCancel?: boolean
@@ -49,7 +49,7 @@ export function CardDialog({
                             </DialogDescription>
                         )}
                     </DialogHeader>
-                    <div className="grid gap-4">
+                    <div className="flex gap-4">
                         {children}
                     </div>
                     <DialogFooter>
