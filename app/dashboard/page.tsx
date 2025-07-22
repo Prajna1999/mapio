@@ -1,3 +1,5 @@
+'use client'
+
 import { AppSidebar } from "@/components/app-sidebar"
 import {
   Breadcrumb,
@@ -15,10 +17,19 @@ import {
 } from "@/components/ui/sidebar"
 import { CardDialog } from "@/components/card-dialog"
 import SVGEmbed from "@/components/svg-embed"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useRouter } from "next/navigation"
+
 export default function Page() {
+  const router = useRouter()
+  
+  const handleSVGClick = (src: string, alt: string) => {
+    const params = new URLSearchParams({
+      src: src,
+      alt: alt
+    })
+    router.push(`/svg-fullscreen?${params.toString()}`)
+  }
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -43,26 +54,83 @@ export default function Page() {
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        <div className="flex justify-center items-center h-screen">
-          <CardDialog
-            trigger={<SVGEmbed src="/world_mercator_india_highlighted.svg" alt="World Map" />}
-            title="Edit Map Configuration"
-            description="Customize your map settings and preferences."
-          // actions={<Button type="submit">Save changes</Button>}
-          >
-            <div className="grid gap-3">
-              <Label htmlFor="map-description">States of India</Label>
-              <SVGEmbed src="/states_of_india_black.svg" alt="India Map" />
+        <div className="flex flex-col min-h-[calc(100vh-64px)]">
+          {/* Simple Header */}
+          <div className="text-center py-8 px-6">
+            <h1 className="text-3xl font-bold mb-2">Map Editor Dashboard</h1>
+            <p className="text-muted-foreground">Click on the map below to start editing</p>
+          </div>
+          
+          {/* Main Content - Centered SVG */}
+          <div className="flex-1 flex justify-center items-center px-6">
+            <CardDialog
+              trigger={<SVGEmbed src="/world_mercator_india_highlighted.svg" alt="World Map" />}
+              title="Edit Map Configuration"
+              description="Customize your map settings and preferences."
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="w-full h-64 flex flex-col border rounded-lg p-3">
+                  <div className="flex-1 flex items-center justify-center overflow-hidden">
+                    <SVGEmbed 
+                      src="/states_of_india_black.svg" 
+                      alt="States of India Map" 
+                      onClick={() => handleSVGClick("/states_of_india_black.svg", "States of India Map")}
+                      className="w-full h-full"
+                      containerClassName="w-full h-full flex justify-center items-center"
+                      imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                      cardClassName="w-full h-full border-0 shadow-none"
+                      showHeader={false}
+                    />
+                  </div>
+                  <Label className="text-center text-sm mt-2 font-medium">States of India</Label>
+                </div>
+                
+                <div className="w-full h-64 flex flex-col border rounded-lg p-3">
+                  <div className="flex-1 flex items-center justify-center overflow-hidden">
+                    <SVGEmbed 
+                      src="/india_district_maps_black_enlarged.svg" 
+                      alt="Districts of India Map" 
+                      onClick={() => handleSVGClick("/india_district_maps_black_enlarged.svg", "Districts of India Map")}
+                      className="w-full h-full"
+                      containerClassName="w-full h-full flex justify-center items-center"
+                      imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                      cardClassName="w-full h-full border-0 shadow-none"
+                      showHeader={false}
+                    />
+                  </div>
+                  <Label className="text-center text-sm mt-2 font-medium">Districts of India</Label>
+                </div>
+                
+                <div className="w-full h-64 flex flex-col border rounded-lg p-3">
+                  <div className="flex-1 flex items-center justify-center overflow-hidden">
+                    <SVGEmbed 
+                      src="/india_loksabha_constituencies.svg" 
+                      alt="Loksabha Constituencies of India Map" 
+                      onClick={() => handleSVGClick("/india_loksabha_constituencies.svg", "Loksabha Constituencies of India Map")}
+                      className="w-full h-full"
+                      containerClassName="w-full h-full flex justify-center items-center"
+                      imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                      cardClassName="w-full h-full border-0 shadow-none"
+                      showHeader={false}
+                    />
+                  </div>
+                  <Label className="text-center text-sm mt-2 font-medium">Loksabha Constituencies of India</Label>
+                </div>
+              </div>
+            </CardDialog>
+          </div>
+
+          {/* Simple Footer */}
+          <div className="border-t p-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
+              <div>Ready to visualize your data</div>
+              <div className="flex gap-4 mt-2 sm:mt-0">
+                <span>3 Templates Available</span>
+                <span>•</span>
+                <span>Interactive Editor</span>
+              </div>
             </div>
-            <div className="grid gap-3">
-              <Label htmlFor="map-description">Districts of India</Label>
-              <SVGEmbed src="/india_district_maps_black_enlarged.svg" alt="India Map" />
-            </div>
-            <div className="grid gap-3">
-              <Label htmlFor="map-description">Loksabha Constituencies of India</Label>
-              <SVGEmbed src="/india_loksabha_constituencies.svg" alt="India Map" />
-            </div>
-          </CardDialog>
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>

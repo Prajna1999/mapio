@@ -10,6 +10,7 @@ interface SVGEmbedProps {
     cardClassName?: string
     showHeader?: boolean
     fill?: string
+    onClick?: () => void
 }
 
 export default function SVGEmbed({
@@ -22,6 +23,7 @@ export default function SVGEmbed({
     containerClassName = "w-full flex justify-center",
     cardClassName = "w-full max-w-4xl mx-auto",
     showHeader = false,
+    onClick,
 }: SVGEmbedProps) {
     return (
         <div className={className}>
@@ -41,7 +43,8 @@ export default function SVGEmbed({
                         <img
                             src={src}
                             alt={alt}
-                            className={imageClassName}
+                            className={`${imageClassName} ${onClick ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                            onClick={onClick}
                         />
                     </div>
                 </CardContent>
