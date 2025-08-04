@@ -14,43 +14,43 @@ function SVGFullScreenContent() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const fileInputRef = useRef<HTMLInputElement>(null)
-    
+
     const src = searchParams.get('src')
     const alt = searchParams.get('alt') || 'SVG Image'
-    
+
     const [csvFile, setCsvFile] = useState<File | null>(null)
     const [csvData, setCsvData] = useState<any[]>([])
     const [isDragging, setIsDragging] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
     const [mapTitle, setMapTitle] = useState('')
-    const [keyValuePairs, setKeyValuePairs] = useState<Array<{key: string, value: string, id: string}>>([
+    const [keyValuePairs, setKeyValuePairs] = useState<Array<{ key: string, value: string, id: string }>>([
         { key: '', value: '', id: '1' }
     ])
     const [svgContent, setSvgContent] = useState<string>('')
     const [isLoadingSvg, setIsLoadingSvg] = useState(false)
-    
+
     const handleBack = () => {
         router.back()
     }
-    
+
     const addKeyValuePair = () => {
         const newId = (keyValuePairs.length + 1).toString()
         setKeyValuePairs([...keyValuePairs, { key: '', value: '', id: newId }])
     }
-    
+
     const removeKeyValuePair = (id: string) => {
         if (keyValuePairs.length > 1) {
             setKeyValuePairs(keyValuePairs.filter(pair => pair.id !== id))
         }
     }
-    
+
     const updateKeyValuePair = (id: string, field: 'key' | 'value', newValue: string) => {
-        setKeyValuePairs(keyValuePairs.map(pair => 
+        setKeyValuePairs(keyValuePairs.map(pair =>
             pair.id === id ? { ...pair, [field]: newValue } : pair
         ))
     }
-    
+
     const populateFromCSV = () => {
         if (csvData.length > 0) {
             const pairs = csvData.map((row, index) => ({
@@ -61,10 +61,10 @@ function SVGFullScreenContent() {
             setKeyValuePairs(pairs.length > 0 ? pairs : [{ key: '', value: '', id: '1' }])
         }
     }
-    
+
     const loadSvgContent = useCallback(async () => {
         if (!src) return
-        
+
         setIsLoadingSvg(true)
         try {
             const response = await fetch(src)
@@ -76,38 +76,44 @@ function SVGFullScreenContent() {
             setIsLoadingSvg(false)
         }
     }, [src])
-    
+
     const getColorForValue = (value: string): string => {
         const numValue = parseFloat(value)
         if (isNaN(numValue)) return '#e5e5e5'
-        
+
         // Simple color mapping based on value
         const maxValue = Math.max(...keyValuePairs
             .map(pair => parseFloat(pair.value))
             .filter(val => !isNaN(val)))
-        
+
         if (maxValue === 0) return '#e5e5e5'
-        
+
         const intensity = numValue / maxValue
         const hue = 120 - (intensity * 120) // Green to red
         return `hsl(${hue}, 70%, 50%)`
     }
-    
+
     const getStyledSvgContent = useCallback(() => {
         if (!svgContent) return ''
-        
+
         let styledSvg = svgContent
-        
+
+        // Add responsive sizing to the SVG element itself
+        styledSvg = styledSvg.replace(
+            /<svg([^>]*)>/,
+            '<svg$1 style="width: 100%; height: 100%; max-width: 100%; max-height: 100%;">'
+        )
+
         keyValuePairs.forEach(pair => {
             if (pair.key && pair.value) {
                 const color = getColorForValue(pair.value)
-                
+
                 // Try to find element by ID first
                 styledSvg = styledSvg.replace(
                     new RegExp(`(id="${pair.key}"[^>]*)(style="[^"]*")`, 'g'),
                     `$1style="fill: ${color}; stroke: #333; stroke-width: 0.5;"`
                 )
-                
+
                 // If not found by ID, try by class or direct element match
                 if (!styledSvg.includes(`fill: ${color}`)) {
                     styledSvg = styledSvg.replace(
@@ -115,7 +121,7 @@ function SVGFullScreenContent() {
                         `$1style="fill: ${color}; stroke: #333; stroke-width: 0.5;"`
                     )
                 }
-                
+
                 // If still not found, try to add style to elements with matching ID
                 if (!styledSvg.includes(`fill: ${color}`)) {
                     styledSvg = styledSvg.replace(
@@ -125,18 +131,18 @@ function SVGFullScreenContent() {
                 }
             }
         })
-        
+
         return styledSvg
     }, [svgContent, keyValuePairs])
-    
+
     useEffect(() => {
         loadSvgContent()
     }, [loadSvgContent])
-    
+
     const parseCSV = useCallback((text: string) => {
         const lines = text.split('\n').filter(line => line.trim())
         if (lines.length === 0) return []
-        
+
         const headers = lines[0].split(',').map(header => header.trim())
         const data = lines.slice(1).map(line => {
             const values = line.split(',').map(val => val.trim())
@@ -146,24 +152,24 @@ function SVGFullScreenContent() {
             })
             return row
         })
-        
+
         return data
     }, [])
-    
+
     const handleFileUpload = useCallback(async (file: File) => {
         if (!file.name.endsWith('.csv')) {
             setUploadError('Please upload a CSV file')
             return
         }
-        
+
         if (file.size > 5 * 1024 * 1024) { // 5MB limit
             setUploadError('File size must be less than 5MB')
             return
         }
-        
+
         setIsProcessing(true)
         setUploadError(null)
-        
+
         try {
             const text = await file.text()
             const parsed = parseCSV(text)
@@ -175,41 +181,41 @@ function SVGFullScreenContent() {
             setIsProcessing(false)
         }
     }, [parseCSV])
-    
+
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(true)
     }, [])
-    
+
     const handleDragLeave = useCallback((e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(false)
     }, [])
-    
+
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(false)
-        
+
         const files = Array.from(e.dataTransfer.files)
         if (files.length > 0) {
             handleFileUpload(files[0])
         }
     }, [handleFileUpload])
-    
+
     const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files
         if (files && files.length > 0) {
             handleFileUpload(files[0])
         }
     }, [handleFileUpload])
-    
+
     return (
         <div className="min-h-screen bg-background">
             {/* Header with back button */}
             <div className="border-b p-4">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         onClick={handleBack}
                         className="flex items-center gap-2"
                     >
@@ -222,60 +228,48 @@ function SVGFullScreenContent() {
             </div>
 
             {/* Main content area */}
-            <div className="flex flex-col lg:flex-row h-[calc(100vh-73px)]">
+            <div className="flex flex-col lg:flex-row">
                 {/* Left half - SVG Map Editor */}
-                <div className="flex-1 lg:w-1/2 p-4">
-                    <Card className="h-full">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Eye className="h-5 w-5" />
-                                Map Editor
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="flex items-center justify-center h-full p-4">
+                <div className="w-full lg:w-1/2 p-1 md:p-2">
+                    <Card className="h-full flex flex-col border-0 md:border shadow-none md:shadow-sm">
+                        <CardContent className="flex-1 flex flex-col p-1 md:p-3">
                             {src ? (
-                                <div className="w-full h-full flex flex-col">
-                                    <div className="text-center mb-4">
-                                        <h3 className="text-lg font-medium">{mapTitle || alt}</h3>
+                                <div className="flex flex-col h-full">
+                                    <div className="text-center mb-2 flex-shrink-0">
+                                        <h3 className="text-base font-medium">{mapTitle || alt}</h3>
                                         <p className="text-xs text-muted-foreground">
                                             {src.split('/').pop()}
                                         </p>
                                     </div>
-                                    <div className="flex-1 flex items-center justify-center overflow-hidden border-2 border-dashed border-muted-foreground/30 rounded-lg">
+                                    <div className="flex-1 min-h-0 flex items-center justify-center border border-dashed border-muted-foreground/30 rounded p-1 md:p-2">
                                         {isLoadingSvg ? (
                                             <div className="flex items-center gap-2">
                                                 <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full" />
                                                 <span className="text-sm text-muted-foreground">Loading SVG...</span>
                                             </div>
                                         ) : svgContent ? (
-                                            <div 
-                                                className="w-full h-full flex items-center justify-center"
+                                            <div
+                                                className="w-full h-full"
                                                 dangerouslySetInnerHTML={{ __html: getStyledSvgContent() }}
-                                                style={{ 
-                                                    maxWidth: '100%', 
-                                                    maxHeight: '100%',
-                                                }}
+                                                style={{ minHeight: 0, minWidth: 0 }}
                                             />
                                         ) : (
                                             <img
                                                 src={src}
                                                 alt={alt}
-                                                className="max-w-full max-h-full object-contain"
-                                                style={{ width: 'auto', height: 'auto' }}
+                                                className="w-full h-full object-contain"
                                             />
                                         )}
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-center space-y-4 w-full">
-                                    <div className="border-2 border-dashed border-muted-foreground rounded-lg p-8 min-h-[400px] flex items-center justify-center">
-                                        <div className="space-y-2">
-                                            <div className="text-4xl">🗺️</div>
-                                            <h3 className="text-lg font-medium">No SVG Selected</h3>
-                                            <p className="text-muted-foreground text-sm">
-                                                Please select an SVG from the dashboard
-                                            </p>
-                                        </div>
+                                <div className="flex-1 flex items-center justify-center">
+                                    <div className="text-center space-y-4">
+                                        <div className="text-4xl">🗺️</div>
+                                        <h3 className="text-lg font-medium">No SVG Selected</h3>
+                                        <p className="text-muted-foreground text-sm">
+                                            Please select an SVG from the dashboard
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -284,13 +278,13 @@ function SVGFullScreenContent() {
                 </div>
 
                 {/* Right half - Tabbed Controls Panel */}
-                <div className="flex-1 lg:w-1/2 p-4 lg:pl-2">
+                <div className="w-full lg:w-1/2 p-1 md:p-2 lg:pl-1">
                     <Tabs defaultValue="upload" className="h-full">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="upload">Upload Data</TabsTrigger>
                             <TabsTrigger value="styling">Styling</TabsTrigger>
                         </TabsList>
-                        
+
                         <TabsContent value="upload" className="space-y-4 h-full">
                             {/* Top Half - Title and CSV Upload */}
                             <div className="space-y-4">
@@ -305,9 +299,9 @@ function SVGFullScreenContent() {
                                     <CardContent>
                                         <div className="space-y-2">
                                             <Label htmlFor="map-title">Title</Label>
-                                            <Input 
-                                                id="map-title" 
-                                                placeholder="Enter map title" 
+                                            <Input
+                                                id="map-title"
+                                                placeholder="Enter map title"
                                                 value={mapTitle}
                                                 onChange={(e) => setMapTitle(e.target.value)}
                                             />
@@ -325,13 +319,12 @@ function SVGFullScreenContent() {
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div
-                                            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
-                                                isDragging 
-                                                    ? 'border-blue-500 bg-blue-50' 
-                                                    : csvFile 
+                                            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${isDragging
+                                                ? 'border-blue-500 bg-blue-50'
+                                                : csvFile
                                                     ? 'border-green-500 bg-green-50'
                                                     : 'border-muted-foreground hover:border-blue-400'
-                                            }`}
+                                                }`}
                                             onDragOver={handleDragOver}
                                             onDragLeave={handleDragLeave}
                                             onDrop={handleDrop}
@@ -365,19 +358,19 @@ function SVGFullScreenContent() {
                                                 </div>
                                             )}
                                         </div>
-                                        
+
                                         {uploadError && (
                                             <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 p-3 rounded-md">
                                                 <AlertCircle className="h-4 w-4" />
                                                 {uploadError}
                                             </div>
                                         )}
-                                        
+
                                         {csvFile && (
                                             <div className="flex gap-2">
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
                                                     onClick={() => {
                                                         setCsvFile(null)
                                                         setCsvData([])
@@ -387,8 +380,8 @@ function SVGFullScreenContent() {
                                                 >
                                                     Clear
                                                 </Button>
-                                                <Button 
-                                                    size="sm" 
+                                                <Button
+                                                    size="sm"
                                                     className="flex-1"
                                                     onClick={populateFromCSV}
                                                 >
@@ -408,8 +401,8 @@ function SVGFullScreenContent() {
                                             <BarChart3 className="h-5 w-5" />
                                             SVG Element Data
                                         </span>
-                                        <Button 
-                                            size="sm" 
+                                        <Button
+                                            size="sm"
                                             variant="outline"
                                             onClick={addKeyValuePair}
                                             className="flex items-center gap-1"
@@ -460,7 +453,7 @@ function SVGFullScreenContent() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        
+
                         <TabsContent value="styling" className="space-y-4">
                             {/* Styling Tab Content */}
                             <Card>
@@ -481,9 +474,9 @@ function SVGFullScreenContent() {
                                             <Input id="border-color" type="color" defaultValue="#000000" />
                                         </div>
                                     </div>
-                                    
+
                                     <Separator />
-                                    
+
                                     <div className="space-y-2">
                                         <Button variant="default" className="w-full flex items-center gap-2">
                                             <Eye className="h-4 w-4" />
