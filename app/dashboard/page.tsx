@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation"
 
 export default function Page() {
   const router = useRouter()
-  
+
   const handleSVGClick = (src: string, alt: string) => {
     const params = new URLSearchParams({
       src: src,
@@ -60,7 +60,7 @@ export default function Page() {
             <h1 className="text-3xl font-bold mb-2">Map Editor Dashboard</h1>
             <p className="text-muted-foreground">Click on the map below to start editing</p>
           </div>
-          
+
           {/* Main Content - Centered SVG */}
           <div className="flex-1 flex justify-center items-center px-6">
             <CardDialog
@@ -71,10 +71,10 @@ export default function Page() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="w-full h-64 flex flex-col border rounded-lg p-3">
                   <div className="flex-1 flex items-center justify-center overflow-hidden">
-                    <SVGEmbed 
-                      src="/states_of_india_black.svg" 
-                      alt="States of India Map" 
-                      onClick={() => handleSVGClick("/states_of_india_black.svg", "States of India Map")}
+                    <SVGEmbed
+                      src="/states_of_india_black.svg"
+                      alt="States of India Map"
+                      onClick={() => handleSVGClick("/states_of_india_black_path.svg", "States of India Map")}
                       className="w-full h-full"
                       containerClassName="w-full h-full flex justify-center items-center"
                       imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
@@ -84,13 +84,13 @@ export default function Page() {
                   </div>
                   <Label className="text-center text-sm mt-2 font-medium">States of India</Label>
                 </div>
-                
+
                 <div className="w-full h-64 flex flex-col border rounded-lg p-3">
                   <div className="flex-1 flex items-center justify-center overflow-hidden">
-                    <SVGEmbed 
-                      src="/india_district_maps_black_enlarged.svg" 
-                      alt="Districts of India Map" 
-                      onClick={() => handleSVGClick("/india_district_maps_black_enlarged.svg", "Districts of India Map")}
+                    <SVGEmbed
+                      src="/india_district_maps_black_enlarged.svg"
+                      alt="Districts of India Map"
+                      onClick={() => handleSVGClick("/districts_of_india_path.svg", "Districts of India Map")}
                       className="w-full h-full"
                       containerClassName="w-full h-full flex justify-center items-center"
                       imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
@@ -100,13 +100,13 @@ export default function Page() {
                   </div>
                   <Label className="text-center text-sm mt-2 font-medium">Districts of India</Label>
                 </div>
-                
+
                 <div className="w-full h-64 flex flex-col border rounded-lg p-3">
                   <div className="flex-1 flex items-center justify-center overflow-hidden">
-                    <SVGEmbed 
-                      src="/india_loksabha_constituencies.svg" 
-                      alt="Loksabha Constituencies of India Map" 
-                      onClick={() => handleSVGClick("/india_loksabha_constituencies.svg", "Loksabha Constituencies of India Map")}
+                    <SVGEmbed
+                      src="/loksabha_constituencies_of_india_path.svg"
+                      alt="Loksabha Constituencies of India Map"
+                      onClick={() => handleSVGClick("/loksabha_constituencies_of_india_path.svg", "Loksabha Constituencies of India Map")}
                       className="w-full h-full"
                       containerClassName="w-full h-full flex justify-center items-center"
                       imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
