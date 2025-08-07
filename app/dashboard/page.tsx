@@ -88,9 +88,9 @@ export default function Page() {
                 <div className="w-full h-64 flex flex-col border rounded-lg p-3">
                   <div className="flex-1 flex items-center justify-center overflow-hidden">
                     <SVGEmbed
-                      src="/india_district_maps_black_enlarged.svg"
+                      src="/india_district_map_latest.svg"
                       alt="Districts of India Map"
-                      onClick={() => handleSVGClick("/districts_of_india_path.svg", "Districts of India Map")}
+                      onClick={() => handleSVGClick("/india_district_map_latest.svg", "Districts of India Map")}
                       className="w-full h-full"
                       containerClassName="w-full h-full flex justify-center items-center"
                       imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
