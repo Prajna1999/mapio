@@ -64,11 +64,13 @@ interface DataClassification {
 // Predefined color schemes
 const PRESET_SCHEMES: Record<string, ColorScheme[]> = {
     sequential: [
-        { id: 'blues', name: 'Blues', type: 'sequential', colors: ['#f7fbff', '#08519c'], accessibilityCompliant: true },
-        { id: 'reds', name: 'Reds', type: 'sequential', colors: ['#fff5f0', '#a50f15'], accessibilityCompliant: true },
-        { id: 'greens', name: 'Greens', type: 'sequential', colors: ['#f7fcf5', '#00441b'], accessibilityCompliant: true },
-        { id: 'purples', name: 'Purples', type: 'sequential', colors: ['#fcfbfd', '#3f007d'], accessibilityCompliant: true },
-        { id: 'oranges', name: 'Oranges', type: 'sequential', colors: ['#fff5eb', '#7f2704'], accessibilityCompliant: true }
+        { id: 'buenos-aries', name: 'Buenos-Aries', type: 'sequential', colors: ['#f7fbff', '#08519c'], accessibilityCompliant: true },
+        { id: 'bucharest', name: 'Bucharest', type: 'sequential', colors: ['#fff5f0', '#a50f15'], accessibilityCompliant: true },
+        { id: 'bellagio', name: 'Bellagio', type: 'sequential', colors: ['#f7fcf5', '#00441b'], accessibilityCompliant: true },
+        { id: 'helsinki', name: 'Helsinki', type: 'sequential', colors: ['#fcfbfd', '#3f007d'], accessibilityCompliant: true },
+        { id: 'dhaka', name: 'Dhaka', type: 'sequential', colors: ['#fff5eb', '#28ab31a1'], accessibilityCompliant: true },
+        { id: 'paris', name: 'Paris', type: 'sequential', colors: ['#fff5eb', '#bc1695ff'], accessibilityCompliant: true },
+
     ],
     diverging: [
         { id: 'rdbu', name: 'Red-Blue', type: 'diverging', colors: ['#b2182b', '#f7f7f7', '#2166ac'], accessibilityCompliant: true },
@@ -104,13 +106,13 @@ function SVGFullScreenContent() {
     const [isDragging, setIsDragging] = useState(false)
     const [isProcessing, setIsProcessing] = useState(false)
     const [uploadError, setUploadError] = useState<string | null>(null)
-    
+
     // Map and visualization
     const [mapTitle, setMapTitle] = useState('')
     const [svgContent, setSvgContent] = useState<string>('')
     const [isLoadingSvg, setIsLoadingSvg] = useState(false)
     const [availableRegions, setAvailableRegions] = useState<string[]>([])
-    
+
     // Data mapping and matching
     const [keyValuePairs, setKeyValuePairs] = useState<Array<{ key: string, value: string, id: string }>>([
         { key: '', value: '', id: '1' }
@@ -118,13 +120,13 @@ function SVGFullScreenContent() {
     const [matchResults, setMatchResults] = useState<MatchResult[]>([])
     const [selectedDataColumn, setSelectedDataColumn] = useState<string>('')
     const [selectedRegionColumn, setSelectedRegionColumn] = useState<string>('')
-    
+
     // Color and styling
     const [selectedColorScheme, setSelectedColorScheme] = useState<ColorScheme>(PRESET_SCHEMES.sequential[0])
     const [classificationMethod, setClassificationMethod] = useState<ClassificationMethod>(CLASSIFICATION_METHODS[0])
     const [numberOfBuckets, setNumberOfBuckets] = useState(5)
     const [dataClassification, setDataClassification] = useState<DataClassification | null>(null)
-    
+
     // Advanced features  
     const [showMismatches, setShowMismatches] = useState(false)
 
@@ -163,7 +165,7 @@ function SVGFullScreenContent() {
     // Extract region names from SVG (by ID and class attributes)
     const extractRegionsFromSVG = useCallback((svgText: string): string[] => {
         const regions = new Set<string>()
-        
+
         // Extract IDs
         const idMatches = svgText.match(/id="([^"]+)"/g) || []
         idMatches.forEach(match => {
@@ -172,7 +174,7 @@ function SVGFullScreenContent() {
                 regions.add(id)
             }
         })
-        
+
         // Extract classes that might represent regions
         const classMatches = svgText.match(/class="([^"]+)"/g) || []
         classMatches.forEach(match => {
@@ -183,7 +185,7 @@ function SVGFullScreenContent() {
                 }
             })
         })
-        
+
         return Array.from(regions).sort()
     }, [])
 
@@ -195,7 +197,7 @@ function SVGFullScreenContent() {
             const response = await fetch(src)
             const svgText = await response.text()
             setSvgContent(svgText)
-            
+
             // Extract available regions from SVG
             const regions = extractRegionsFromSVG(svgText)
             setAvailableRegions(regions)
@@ -216,13 +218,13 @@ function SVGFullScreenContent() {
             includeScore: true,
             keys: ['name']
         })
-        
+
         return csvRegions.map(csvRegion => {
             // First try exact match
-            const exactMatch = svgRegions.find(svgRegion => 
+            const exactMatch = svgRegions.find(svgRegion =>
                 svgRegion.toLowerCase() === csvRegion.toLowerCase()
             )
-            
+
             if (exactMatch) {
                 return {
                     original: csvRegion,
@@ -235,7 +237,7 @@ function SVGFullScreenContent() {
                     }]
                 }
             }
-            
+
             // Try fuzzy matching
             const results = fuseWithData.search(csvRegion)
             const suggestions = results.slice(0, 3).map(result => ({
@@ -243,9 +245,9 @@ function SVGFullScreenContent() {
                 confidence: 1 - (result.score || 0),
                 reason: 'fuzzy' as const
             }))
-            
+
             const bestMatch = suggestions[0]
-            
+
             return {
                 original: csvRegion,
                 matched: bestMatch?.confidence > 0.6 ? bestMatch.match : undefined,
@@ -259,7 +261,7 @@ function SVGFullScreenContent() {
     const classifyData = useCallback((values: number[], method: ClassificationMethod, buckets: number): DataClassification => {
         const sortedValues = values.filter(v => !isNaN(v)).sort((a, b) => a - b)
         let breaks: number[] = []
-        
+
         switch (method.type) {
             case 'equalInterval':
                 const min = d3.min(sortedValues) || 0
@@ -267,27 +269,27 @@ function SVGFullScreenContent() {
                 const step = (max - min) / buckets
                 breaks = d3.range(buckets + 1).map(i => min + i * step)
                 break
-                
+
             case 'quantile':
-                breaks = d3.quantile(sortedValues, 0) ? 
+                breaks = d3.quantile(sortedValues, 0) ?
                     d3.range(buckets + 1).map(i => d3.quantile(sortedValues, i / buckets) || 0) :
                     [0]
                 break
-                
+
             case 'natural':
                 // Simplified natural breaks
                 const naturalStep = (d3.max(sortedValues) || 0) - (d3.min(sortedValues) || 0)
                 breaks = d3.range(buckets + 1).map(i => (d3.min(sortedValues) || 0) + (i * naturalStep / buckets))
                 break
-                
+
             default:
                 breaks = d3.range(buckets + 1).map(i => i * 100 / buckets)
         }
-        
-        const labels = breaks.slice(1).map((brk, i) => 
+
+        const labels = breaks.slice(1).map((brk, i) =>
             `${breaks[i].toFixed(1)} - ${brk.toFixed(1)}`
         )
-        
+
         return {
             method,
             buckets,
@@ -328,7 +330,7 @@ function SVGFullScreenContent() {
         const { breaks } = dataClassification
         const bucketIndex = breaks.findIndex((brk, i) => i > 0 && numValue <= brk) - 1
         const colors = generateColorScale(selectedColorScheme, dataClassification.buckets)
-        
+
         return colors[Math.max(0, Math.min(bucketIndex, colors.length - 1))] || '#e5e5e5'
     }, [dataClassification, keyValuePairs, selectedColorScheme, generateColorScale])
 
@@ -359,17 +361,17 @@ function SVGFullScreenContent() {
             csvData.forEach(row => {
                 const regionName = String(row[selectedRegionColumn])
                 const dataValue = row[selectedDataColumn]
-                
+
                 // Find the matched SVG element
                 const matchResult = matchResults.find(m => m.original === regionName)
                 const svgElementId = matchResult?.matched
-                
+
                 if (svgElementId && dataValue !== null && dataValue !== undefined) {
                     const color = getColorForValue(dataValue)
-                    
+
                     // Apply styling to the matched SVG element
                     const styleValue = `fill: ${color}; stroke: #333; stroke-width: 0.5;`
-                    
+
                     // Try multiple patterns to find and style the element
                     const patterns = [
                         new RegExp(`(id="${svgElementId}"[^>]*?)style="[^"]*"`, 'g'),
@@ -377,7 +379,7 @@ function SVGFullScreenContent() {
                         new RegExp(`(class="[^"]*${svgElementId}[^"]*"[^>]*?)style="[^"]*"`, 'g'),
                         new RegExp(`(class="[^"]*${svgElementId}[^"]*"[^>]*?)(?=\\s|>)`, 'g')
                     ]
-                    
+
                     let styled = false
                     for (const pattern of patterns) {
                         if (pattern.test(styledSvg)) {
@@ -386,7 +388,7 @@ function SVGFullScreenContent() {
                             break
                         }
                     }
-                    
+
                     // If no existing style attribute, add one
                     if (!styled) {
                         styledSvg = styledSvg.replace(
@@ -443,7 +445,7 @@ function SVGFullScreenContent() {
                 useCORS: true,
                 allowTaint: true
             })
-            
+
             const link = document.createElement('a')
             link.download = `${mapTitle || 'choropleth-map'}.png`
             link.href = canvas.toDataURL('image/png')
@@ -464,16 +466,16 @@ function SVGFullScreenContent() {
                 useCORS: true,
                 allowTaint: true
             })
-            
+
             const pdf = new jsPDF({
                 orientation: 'landscape',
                 unit: 'mm',
                 format: 'a4'
             })
-            
+
             const imgWidth = 297 // A4 landscape width in mm
             const imgHeight = (canvas.height * imgWidth) / canvas.width
-            
+
             pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight)
             pdf.save(`${mapTitle || 'choropleth-map'}.pdf`)
         } catch (error) {
@@ -500,7 +502,7 @@ function SVGFullScreenContent() {
         const exportData = csvData.map(row => {
             const regionName = String(row[selectedRegionColumn])
             const matchResult = matchResults.find(m => m.original === regionName)
-            
+
             return {
                 ...row,
                 matched_svg_element: matchResult?.matched || '',
@@ -525,32 +527,32 @@ function SVGFullScreenContent() {
     const validateCSVData = useCallback((data: CSVRow[], parseErrors: Papa.ParseError[]): ValidationResult => {
         const errors: string[] = []
         const warnings: string[] = []
-        
+
         if (parseErrors.length > 0) {
             errors.push(...parseErrors.map(err => `Parse error: ${err.message}`))
         }
-        
+
         if (data.length === 0) {
             errors.push('No data rows found')
             return { isValid: false, errors, warnings, rowCount: 0, columnCount: 0 }
         }
-        
+
         const firstRow = data[0]
         const columnCount = Object.keys(firstRow).length
-        
+
         if (columnCount < 2) {
             warnings.push('CSV should have at least 2 columns (region names and data values)')
         }
-        
+
         // Check for missing values
-        const missingValueRows = data.filter(row => 
+        const missingValueRows = data.filter(row =>
             Object.values(row).some(value => value === null || value === undefined || value === '')
         ).length
-        
+
         if (missingValueRows > 0) {
             warnings.push(`${missingValueRows} rows have missing values`)
         }
-        
+
         return {
             isValid: errors.length === 0,
             errors,
@@ -606,7 +608,7 @@ function SVGFullScreenContent() {
             setCsvFile(file)
             setCsvData(data)
             setValidationResult(validation)
-            
+
             // Auto-select first two columns if available
             if (data.length > 0) {
                 const columns = Object.keys(data[0])
@@ -615,7 +617,7 @@ function SVGFullScreenContent() {
                     setSelectedDataColumn(columns[1])
                 }
             }
-            
+
             if (!validation.isValid) {
                 setUploadError(validation.errors.join('; '))
             }
@@ -739,7 +741,7 @@ function SVGFullScreenContent() {
                             <TabsTrigger value="styling">Styling</TabsTrigger>
                             <TabsTrigger value="export">Export</TabsTrigger>
                         </TabsList>
-
+                        {/* data */}
                         <TabsContent value="data" className="space-y-4 h-full">
                             {/* Top Half - Title and CSV Upload */}
                             <div className="space-y-4">
@@ -846,7 +848,7 @@ function SVGFullScreenContent() {
                                                         Apply to Table
                                                     </Button>
                                                 </div>
-                                                
+
                                                 {csvData.length > 0 && (
                                                     <div className="grid grid-cols-2 gap-3">
                                                         <div className="space-y-2">
@@ -963,7 +965,7 @@ function SVGFullScreenContent() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-
+                        {/* mapping */}
                         <TabsContent value="mapping" className="space-y-4">
                             {/* Data Mapping and Fuzzy Matching Results */}
                             <Card>
@@ -980,7 +982,7 @@ function SVGFullScreenContent() {
                                                 Found {availableRegions.length} regions in SVG: {availableRegions.slice(0, 5).join(', ')}
                                                 {availableRegions.length > 5 && ` and ${availableRegions.length - 5} more...`}
                                             </div>
-                                            
+
                                             {matchResults.length > 0 && (
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between">
@@ -993,33 +995,32 @@ function SVGFullScreenContent() {
                                                             {showMismatches ? 'Show All' : 'Show Mismatches Only'}
                                                         </Button>
                                                     </div>
-                                                    
+
                                                     <div className="max-h-64 overflow-y-auto space-y-1">
                                                         {matchResults
                                                             .filter(result => !showMismatches || result.confidence < 0.8)
                                                             .map((result, i) => (
-                                                            <div key={i} className="flex items-center justify-between p-2 bg-muted/50 rounded text-xs">
-                                                                <div className="flex-1">
-                                                                    <div className="font-medium">{result.original}</div>
-                                                                    {result.matched && (
-                                                                        <div className="text-muted-foreground">→ {result.matched}</div>
-                                                                    )}
+                                                                <div key={i} className="flex items-center justify-between p-2 bg-muted/50 rounded text-xs">
+                                                                    <div className="flex-1">
+                                                                        <div className="font-medium">{result.original}</div>
+                                                                        {result.matched && (
+                                                                            <div className="text-muted-foreground">→ {result.matched}</div>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className={`px-2 py-1 rounded text-xs font-medium ${result.confidence >= 0.9 ? 'bg-green-100 text-green-800' :
+                                                                        result.confidence >= 0.7 ? 'bg-yellow-100 text-yellow-800' :
+                                                                            'bg-red-100 text-red-800'
+                                                                        }`}>
+                                                                        {(result.confidence * 100).toFixed(0)}%
+                                                                    </div>
                                                                 </div>
-                                                                <div className={`px-2 py-1 rounded text-xs font-medium ${
-                                                                    result.confidence >= 0.9 ? 'bg-green-100 text-green-800' :
-                                                                    result.confidence >= 0.7 ? 'bg-yellow-100 text-yellow-800' :
-                                                                    'bg-red-100 text-red-800'
-                                                                }`}>
-                                                                    {(result.confidence * 100).toFixed(0)}%
-                                                                </div>
-                                                            </div>
-                                                        ))}
+                                                            ))}
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
                                     )}
-                                    
+
                                     {matchResults.length === 0 && csvData.length > 0 && (
                                         <div className="text-center py-8 text-muted-foreground">
                                             <div className="text-2xl mb-2">🔄</div>
@@ -1029,54 +1030,55 @@ function SVGFullScreenContent() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-
-                        <TabsContent value="styling" className="space-y-4">
+                        {/* styling */}
+                        <TabsContent value="styling" className="space-y-6">
                             {/* Color Schemes */}
                             <Card>
-                                <CardHeader>
+                                <CardHeader className="pb-4">
                                     <CardTitle className="flex items-center gap-2">
                                         <Palette className="h-5 w-5" />
                                         Color Schemes
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-3">
-                                        <div className="space-y-2">
-                                            <Label>Scheme Type</Label>
-                                            <div className="grid grid-cols-3 gap-2">
+                                <CardContent className="space-y-6">
+                                    <div className="space-y-4">
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium">Scheme Type</Label>
+                                            <div className="grid grid-cols-3 gap-3">
                                                 {Object.keys(PRESET_SCHEMES).map(type => (
                                                     <Button
                                                         key={type}
                                                         variant={selectedColorScheme.type === type ? "default" : "outline"}
-                                                        size="sm"
+                                                        size="default"
                                                         onClick={() => setSelectedColorScheme(PRESET_SCHEMES[type][0])}
-                                                        className="capitalize"
+                                                        className="capitalize h-10"
                                                     >
                                                         {type}
                                                     </Button>
                                                 ))}
                                             </div>
                                         </div>
-                                        
-                                        <div className="space-y-2">
-                                            <Label>Color Palette</Label>
-                                            <div className="grid grid-cols-2 gap-2">
+
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium">Color Palette</Label>
+                                            <div className="grid grid-cols-3 gap-4">
                                                 {PRESET_SCHEMES[selectedColorScheme.type]?.map(scheme => (
                                                     <Button
                                                         key={scheme.id}
-                                                        variant={selectedColorScheme.id === scheme.id ? "default" : "outline"}
-                                                        size="sm"
+                                                        variant={selectedColorScheme.id === scheme.id ? "secondary" : "outline"}
+                                                        size="default"
                                                         onClick={() => setSelectedColorScheme(scheme)}
-                                                        className="h-auto py-2"
+                                                        className="h-auto p-3 flex-col gap-3"
                                                     >
-                                                        <div className="space-y-1 w-full">
-                                                            <div className="text-xs">{scheme.name}</div>
-                                                            <div className="flex h-2 rounded overflow-hidden">
-                                                                {scheme.colors.map((color, i) => (
-                                                                    <div key={i} className="flex-1" style={{ backgroundColor: color }} />
-                                                                ))}
-                                                            </div>
+                                                        <div className="w-1/2 h-1/2 aspect-square rounded-lg overflow-hidden border-2 border-white shadow-sm">
+                                                            <div
+                                                                className="w-full h-full"
+                                                                style={{
+                                                                    background: `linear-gradient(45deg, ${scheme.colors.join(', ')})`
+                                                                }}
+                                                            />
                                                         </div>
+                                                        <div className="text-sm font-medium">{scheme.name}</div>
                                                     </Button>
                                                 ))}
                                             </div>
@@ -1087,35 +1089,35 @@ function SVGFullScreenContent() {
 
                             {/* Data Classification */}
                             <Card>
-                                <CardHeader>
+                                <CardHeader className="pb-4">
                                     <CardTitle className="flex items-center gap-2">
                                         <BarChart3 className="h-5 w-5" />
                                         Data Classification
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-2">
-                                            <Label>Method</Label>
+                                <CardContent className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium">Method</Label>
                                             <select
                                                 value={classificationMethod.id}
                                                 onChange={(e) => {
                                                     const method = CLASSIFICATION_METHODS.find(m => m.id === e.target.value)
                                                     if (method) setClassificationMethod(method)
                                                 }}
-                                                className="w-full p-2 border rounded-md text-sm"
+                                                className="w-full p-3 border rounded-md text-sm bg-background"
                                             >
                                                 {CLASSIFICATION_METHODS.map(method => (
                                                     <option key={method.id} value={method.id}>{method.name}</option>
                                                 ))}
                                             </select>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Buckets</Label>
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium">Buckets</Label>
                                             <select
                                                 value={numberOfBuckets}
                                                 onChange={(e) => setNumberOfBuckets(Number(e.target.value))}
-                                                className="w-full p-2 border rounded-md text-sm"
+                                                className="w-full p-3 border rounded-md text-sm bg-background"
                                             >
                                                 {[3, 4, 5, 6, 7, 8, 9, 10].map(num => (
                                                     <option key={num} value={num}>{num}</option>
@@ -1123,20 +1125,20 @@ function SVGFullScreenContent() {
                                             </select>
                                         </div>
                                     </div>
-                                    
+
                                     {dataClassification && (
-                                        <div className="space-y-2">
-                                            <Label>Classification Preview</Label>
-                                            <div className="space-y-1 text-xs">
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium">Classification Preview</Label>
+                                            <div className="space-y-2 p-4 bg-muted/30 rounded-lg border">
                                                 {dataClassification.labels.map((label, i) => {
                                                     const colors = generateColorScale(selectedColorScheme, numberOfBuckets)
                                                     return (
-                                                        <div key={i} className="flex items-center gap-2">
-                                                            <div 
-                                                                className="w-4 h-4 rounded border"
+                                                        <div key={i} className="flex items-center gap-3">
+                                                            <div
+                                                                className="w-5 h-5 rounded border-2 border-white shadow-sm"
                                                                 style={{ backgroundColor: colors[i] }}
                                                             />
-                                                            <span>{label}</span>
+                                                            <span className="text-sm">{label}</span>
                                                         </div>
                                                     )
                                                 })}
@@ -1146,7 +1148,7 @@ function SVGFullScreenContent() {
                                 </CardContent>
                             </Card>
                         </TabsContent>
-
+                        {/* export */}
                         <TabsContent value="export" className="space-y-4">
                             {/* Export Options */}
                             <Card>
@@ -1158,8 +1160,8 @@ function SVGFullScreenContent() {
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                     <div className="grid grid-cols-2 gap-2">
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             className="flex items-center gap-2"
                                             onClick={exportAsPNG}
                                             disabled={!svgContent}
@@ -1167,8 +1169,8 @@ function SVGFullScreenContent() {
                                             <Download className="h-4 w-4" />
                                             PNG
                                         </Button>
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             className="flex items-center gap-2"
                                             onClick={exportAsSVG}
                                             disabled={!svgContent}
@@ -1176,8 +1178,8 @@ function SVGFullScreenContent() {
                                             <Download className="h-4 w-4" />
                                             SVG
                                         </Button>
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             className="flex items-center gap-2"
                                             onClick={exportAsPDF}
                                             disabled={!svgContent}
@@ -1185,8 +1187,8 @@ function SVGFullScreenContent() {
                                             <Download className="h-4 w-4" />
                                             PDF
                                         </Button>
-                                        <Button 
-                                            variant="outline" 
+                                        <Button
+                                            variant="outline"
                                             className="flex items-center gap-2"
                                             onClick={exportData}
                                             disabled={csvData.length === 0}
