@@ -88,7 +88,7 @@ export default function Page() {
                 <div className="w-full h-64 flex flex-col border rounded-lg p-3">
                   <div className="flex-1 flex items-center justify-center overflow-hidden">
                     <SVGEmbed
-                      src="/india_district_map_latest.svg"
+                      src="/public/india_district_maps_black.svg"
                       alt="Districts of India Map"
                       onClick={() => handleSVGClick("/india_district_map_latest.svg", "Districts of India Map")}
                       className="w-full h-full"

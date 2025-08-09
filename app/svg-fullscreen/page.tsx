@@ -8,6 +8,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, Download, Palette, Upload, FileText, BarChart3, AlertCircle, CheckCircle, Plus, Trash2, Edit3, Settings } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import Papa from 'papaparse'
 import Fuse from 'fuse.js'
 import chroma from 'chroma-js'
@@ -15,81 +24,7 @@ import * as d3 from 'd3'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
-// Types and interfaces
-interface CSVRow {
-    [key: string]: string | number
-}
 
-interface ValidationResult {
-    isValid: boolean
-    errors: string[]
-    warnings: string[]
-    rowCount: number
-    columnCount: number
-}
-
-interface MatchResult {
-    original: string
-    matched?: string
-    confidence: number
-    suggestions: Array<{
-        match: string
-        confidence: number
-        reason: 'exact' | 'alias' | 'fuzzy'
-    }>
-}
-
-interface ColorScheme {
-    id: string
-    name: string
-    type: 'sequential' | 'diverging' | 'categorical' | 'custom'
-    colors: string[]
-    accessibilityCompliant: boolean
-    interpolation?: 'linear' | 'cubic' | 'basis'
-}
-
-interface ClassificationMethod {
-    id: string
-    name: string
-    type: 'equalInterval' | 'quantile' | 'natural' | 'manual'
-}
-
-interface DataClassification {
-    method: ClassificationMethod
-    buckets: number
-    breaks: number[]
-    labels: string[]
-}
-
-// Predefined color schemes
-const PRESET_SCHEMES: Record<string, ColorScheme[]> = {
-    sequential: [
-        { id: 'buenos-aries', name: 'Buenos-Aries', type: 'sequential', colors: ['#f7fbff', '#08519c'], accessibilityCompliant: true },
-        { id: 'bucharest', name: 'Bucharest', type: 'sequential', colors: ['#fff5f0', '#a50f15'], accessibilityCompliant: true },
-        { id: 'bellagio', name: 'Bellagio', type: 'sequential', colors: ['#f7fcf5', '#00441b'], accessibilityCompliant: true },
-        { id: 'helsinki', name: 'Helsinki', type: 'sequential', colors: ['#fcfbfd', '#3f007d'], accessibilityCompliant: true },
-        { id: 'dhaka', name: 'Dhaka', type: 'sequential', colors: ['#fff5eb', '#28ab31a1'], accessibilityCompliant: true },
-        { id: 'paris', name: 'Paris', type: 'sequential', colors: ['#fff5eb', '#bc1695ff'], accessibilityCompliant: true },
-
-    ],
-    diverging: [
-        { id: 'rdbu', name: 'Red-Blue', type: 'diverging', colors: ['#b2182b', '#f7f7f7', '#2166ac'], accessibilityCompliant: true },
-        { id: 'rdylgn', name: 'Red-Yellow-Green', type: 'diverging', colors: ['#d73027', '#ffffbf', '#1a9850'], accessibilityCompliant: true },
-        { id: 'brbg', name: 'Brown-Blue-Green', type: 'diverging', colors: ['#8c510a', '#f5f5f5', '#01665e'], accessibilityCompliant: true },
-        { id: 'piyg', name: 'Pink-Yellow-Green', type: 'diverging', colors: ['#e9a3c9', '#f7f7f7', '#a1d76a'], accessibilityCompliant: true }
-    ],
-    categorical: [
-        { id: 'set1', name: 'Set 1', type: 'categorical', colors: ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf'], accessibilityCompliant: true },
-        { id: 'set2', name: 'Set 2', type: 'categorical', colors: ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494', '#b3b3b3'], accessibilityCompliant: true }
-    ]
-}
-
-const CLASSIFICATION_METHODS: ClassificationMethod[] = [
-    { id: 'equalInterval', name: 'Equal Intervals', type: 'equalInterval' },
-    { id: 'quantile', name: 'Quantiles', type: 'quantile' },
-    { id: 'natural', name: 'Natural Breaks (Jenks)', type: 'natural' },
-    { id: 'manual', name: 'Manual', type: 'manual' }
-]
 
 function SVGFullScreenContent() {
     const searchParams = useSearchParams()
@@ -154,8 +89,8 @@ function SVGFullScreenContent() {
     const populateFromCSV = () => {
         if (csvData.length > 0) {
             const pairs = csvData.map((row, index) => ({
-                key: Object.keys(row)[0] || '',
-                value: Object.values(row)[0] as string || '',
+                key: String(Object.values(row)[0] ?? ''),
+                value: String(Object.values(row)[1] ?? ''),
                 id: (index + 1).toString()
             }))
             setKeyValuePairs(pairs.length > 0 ? pairs : [{ key: '', value: '', id: '1' }])
@@ -595,7 +530,7 @@ function SVGFullScreenContent() {
             return
         }
 
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        if (file.size > 20 * 1024 * 1024) { // 20 MB limit
             setUploadError('File size must be less than 5MB')
             return
         }
@@ -612,6 +547,7 @@ function SVGFullScreenContent() {
             // Auto-select first two columns if available
             if (data.length > 0) {
                 const columns = Object.keys(data[0])
+                console.log(`Selected columns are ${columns}`)
                 if (columns.length >= 2) {
                     setSelectedRegionColumn(columns[0])
                     setSelectedDataColumn(columns[1])
@@ -683,7 +619,7 @@ function SVGFullScreenContent() {
             </div>
 
             {/* Main content area */}
-            <div className="flex flex-col lg:flex-row">
+            <div className="flex flex-col lg:flex-row gap-2">
                 {/* Left half - SVG Map Editor */}
                 <div className="w-full lg:w-1/2 p-1 md:p-2">
                     <Card className="h-full flex flex-col border-0 md:border shadow-none md:shadow-sm">
@@ -734,7 +670,7 @@ function SVGFullScreenContent() {
 
                 {/* Right half - Tabbed Controls Panel */}
                 <div className="w-full lg:w-1/2 p-1 md:p-2 lg:pl-1">
-                    <Tabs defaultValue="data" className="h-full">
+                    <Tabs defaultValue="data" className="h-full mb-4">
                         <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="data">Data</TabsTrigger>
                             <TabsTrigger value="mapping">Mapping</TabsTrigger>
@@ -776,7 +712,7 @@ function SVGFullScreenContent() {
                                     </CardHeader>
                                     <CardContent className="space-y-4">
                                         <div
-                                            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${isDragging
+                                            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer h-full w-full ${isDragging
                                                 ? 'border-blue-500 bg-blue-50'
                                                 : csvFile
                                                     ? 'border-green-500 bg-green-50'
@@ -808,10 +744,10 @@ function SVGFullScreenContent() {
                                                     </p>
                                                 </div>
                                             ) : (
-                                                <div className="space-y-2">
+                                                <div className="flex flex-col items-center space-y-2">
                                                     <FileText className="h-8 w-8 text-muted-foreground mx-auto" />
                                                     <p className="text-sm font-medium">Drop CSV here or click to browse</p>
-                                                    <p className="text-xs text-muted-foreground">Max size: 5MB</p>
+                                                    <p className="text-xs text-muted-foreground">Max size: 20MB</p>
                                                 </div>
                                             )}
                                         </div>
@@ -1033,7 +969,7 @@ function SVGFullScreenContent() {
                         {/* styling */}
                         <TabsContent value="styling" className="space-y-6">
                             {/* Color Schemes */}
-                            <Card>
+                            <Card className="space-y-4">
                                 <CardHeader className="pb-4">
                                     <CardTitle className="flex items-center gap-2">
                                         <Palette className="h-5 w-5" />
@@ -1041,54 +977,52 @@ function SVGFullScreenContent() {
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
-                                    <div className="space-y-4">
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-medium">Scheme Type</Label>
-                                            <div className="grid grid-cols-3 gap-3">
-                                                {Object.keys(PRESET_SCHEMES).map(type => (
-                                                    <Button
-                                                        key={type}
-                                                        variant={selectedColorScheme.type === type ? "default" : "outline"}
-                                                        size="default"
-                                                        onClick={() => setSelectedColorScheme(PRESET_SCHEMES[type][0])}
-                                                        className="capitalize h-10"
-                                                    >
-                                                        {type}
-                                                    </Button>
-                                                ))}
-                                            </div>
+                                    <div className="space-y-6">
+                                        <Label className="text-lg font-medium">Scheme Type</Label>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {Object.keys(PRESET_SCHEMES).map(type => (
+                                                <Button
+                                                    key={type}
+                                                    variant={selectedColorScheme.type === type ? "default" : "outline"}
+                                                    size="default"
+                                                    onClick={() => setSelectedColorScheme(PRESET_SCHEMES[type][0])}
+                                                    className="capitalize h-10"
+                                                >
+                                                    {type}
+                                                </Button>
+                                            ))}
                                         </div>
+                                    </div>
 
-                                        <div className="space-y-3">
-                                            <Label className="text-sm font-medium">Color Palette</Label>
-                                            <div className="grid grid-cols-3 gap-4">
-                                                {PRESET_SCHEMES[selectedColorScheme.type]?.map(scheme => (
-                                                    <Button
-                                                        key={scheme.id}
-                                                        variant={selectedColorScheme.id === scheme.id ? "secondary" : "outline"}
-                                                        size="default"
-                                                        onClick={() => setSelectedColorScheme(scheme)}
-                                                        className="h-auto p-3 flex-col gap-3"
-                                                    >
-                                                        <div className="w-1/2 h-1/2 aspect-square rounded-lg overflow-hidden border-2 border-white shadow-sm">
-                                                            <div
-                                                                className="w-full h-full"
-                                                                style={{
-                                                                    background: `linear-gradient(45deg, ${scheme.colors.join(', ')})`
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <div className="text-sm font-medium">{scheme.name}</div>
-                                                    </Button>
-                                                ))}
-                                            </div>
+                                    <div className="space-y-6">
+                                        <Label className="text-lg font-bold">Color Palette</Label>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            {PRESET_SCHEMES[selectedColorScheme.type]?.map(scheme => (
+                                                <Button
+                                                    key={scheme.id}
+                                                    variant={selectedColorScheme.id === scheme.id ? "secondary" : "outline"}
+                                                    size="default"
+                                                    onClick={() => setSelectedColorScheme(scheme)}
+                                                    className="h-auto p-3 flex-col gap-3"
+                                                >
+                                                    <div className="w-1/2 h-1/2 aspect-square rounded-lg overflow-hidden border-2 border-white shadow-sm">
+                                                        <div
+                                                            className="w-full h-full"
+                                                            style={{
+                                                                background: `linear-gradient(45deg, ${scheme.colors.join(', ')})`
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="text-sm font-medium">{scheme.name}</div>
+                                                </Button>
+                                            ))}
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
                             {/* Data Classification */}
-                            <Card>
+                            <Card className="space-y-4">
                                 <CardHeader className="pb-4">
                                     <CardTitle className="flex items-center gap-2">
                                         <BarChart3 className="h-5 w-5" />
@@ -1099,33 +1033,49 @@ function SVGFullScreenContent() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-3">
                                             <Label className="text-sm font-medium">Method</Label>
-                                            <select
+                                            <Select
                                                 value={classificationMethod.id}
-                                                onChange={(e) => {
-                                                    const method = CLASSIFICATION_METHODS.find(m => m.id === e.target.value)
+                                                onValueChange={(value) => {
+                                                    const method = CLASSIFICATION_METHODS.find(m => m.id === value)
                                                     if (method) setClassificationMethod(method)
                                                 }}
-                                                className="w-full p-3 border rounded-md text-sm bg-background"
+
                                             >
-                                                {CLASSIFICATION_METHODS.map(method => (
-                                                    <option key={method.id} value={method.id}>{method.name}</option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select method" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectGroup>
+                                                        {CLASSIFICATION_METHODS.map(method => (
+                                                            <SelectItem className={`h-8`} key={method.id} value={method.id}>
+                                                                {method.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="space-y-3">
                                             <Label className="text-sm font-medium">Buckets</Label>
-                                            <select
-                                                value={numberOfBuckets}
-                                                onChange={(e) => setNumberOfBuckets(Number(e.target.value))}
-                                                className="w-full p-3 border rounded-md text-sm bg-background"
+                                            <Select
+                                                value={numberOfBuckets.toString()}
+                                                onValueChange={(value) => setNumberOfBuckets(Number(value))}
                                             >
-                                                {[3, 4, 5, 6, 7, 8, 9, 10].map(num => (
-                                                    <option key={num} value={num}>{num}</option>
-                                                ))}
-                                            </select>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select buckets" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectGroup>
+                                                        {[3, 4, 5, 6, 7, 8, 9, 10].map(num => (
+                                                            <SelectItem className={`h-8`} key={num} value={num.toString()}>
+                                                                {num}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                     </div>
-
                                     {dataClassification && (
                                         <div className="space-y-3">
                                             <Label className="text-sm font-medium">Classification Preview</Label>
