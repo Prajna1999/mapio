@@ -47,6 +47,13 @@ interface DataClassification {
     labels: string[]
 }
 
+interface KeyValuePair {
+    key: string
+    value: string
+    id: string
+}
+
+
 // Predefined color schemes
 const PRESET_SCHEMES: Record<string, ColorScheme[]> = {
     sequential: [
@@ -77,3 +84,190 @@ const CLASSIFICATION_METHODS: ClassificationMethod[] = [
     { id: 'manual', name: 'Manual', type: 'manual' }
 ]
 
+
+interface MapStoreState {
+    // File and data management
+    csvFile: File | null
+    csvData: CSVRow[]
+    validationResult: ValidationResult | null
+    isDragging: boolean
+    isProcessing: boolean
+    uploadError: string | null
+
+    // Map and visualization
+    mapTitle: string
+    svgContent: string
+    isLoadingSvg: boolean
+    availableRegions: string[]
+
+    // Data mapping and matching
+    keyValuePairs: KeyValuePair[]
+    matchResults: MatchResult[]
+    selectedDataColumn: string
+    selectedRegionColumn: string
+
+    // Color and styling
+    selectedColorScheme: ColorScheme
+    classificationMethod: ClassificationMethod
+    numberOfBuckets: number
+    dataClassification: DataClassification | null
+
+    // Advanced features
+    showMismatches: boolean
+
+    // Hydration state
+    _hasHydrated: boolean
+    setHasHydrated: (hasHydrated: boolean) => void
+
+    // Actions (same as before)
+    setCsvFile: (file: File | null) => void
+    setCsvData: (data: CSVRow[]) => void
+    setValidationResult: (result: ValidationResult | null) => void
+    setIsDragging: (dragging: boolean) => void
+    setIsProcessing: (processing: boolean) => void
+    setUploadError: (error: string | null) => void
+    setMapTitle: (title: string) => void
+    setSvgContent: (content: string) => void
+    setIsLoadingSvg: (loading: boolean) => void
+    setAvailableRegions: (regions: string[]) => void
+    setKeyValuePairs: (pairs: KeyValuePair[]) => void
+    setMatchResults: (results: MatchResult[]) => void
+    setSelectedDataColumn: (column: string) => void
+    setSelectedRegionColumn: (column: string) => void
+    setSelectedColorScheme: (scheme: ColorScheme) => void
+    setClassificationMethod: (method: ClassificationMethod) => void
+    setNumberOfBuckets: (buckets: number) => void
+    setDataClassification: (classification: DataClassification | null) => void
+    setShowMismatches: (show: boolean) => void
+
+    // Helper actions
+    addKeyValuePair: () => void
+    removeKeyValuePair: (id: string) => void
+    updateKeyValuePair: (id: string, field: 'key' | 'value', value: string) => void
+    clearAllData: () => void
+}
+
+export const useMapStore = create<MapStoreState>()(
+    persist(
+        (set, get) => ({
+            // initial state
+            csvFile: null,
+            csvData: [],
+            validationResult: null,
+            isDragging: false,
+            isProcessing: false,
+            uploadError: null,
+            mapTitle: '',
+            svgContent: '',
+            isLoadingSvg: false,
+            availableRegions: [],
+            keyValuePairs: [{ key: '', value: '', id: '1' }],
+            matchResults: [],
+            selectedDataColumn: '',
+            selectedRegionColumn: '',
+            selectedColorScheme: PRESET_SCHEMES.sequential[0],
+            classificationMethod: CLASSIFICATION_METHODS[0],
+            numberOfBuckets: 5,
+            dataClassification: null,
+            showMismatches: false,
+
+            // hydration state for nextjs
+            _hasHydrated: false,
+            setHasHydrated: (hasHydrated: boolean) => (
+                { _hasHydrated: hasHydrated }
+            ),
+            // Actions
+            setCsvFile: (file) => set({ csvFile: file }),
+            setCsvData: (data) => set({ csvData: data }),
+            setValidationResult: (result) => set({ validationResult: result }),
+            setIsDragging: (dragging) => set({ isDragging: dragging }),
+            setIsProcessing: (processing) => set({ isProcessing: processing }),
+            setUploadError: (error) => set({ uploadError: error }),
+            setMapTitle: (title) => set({ mapTitle: title }),
+            setSvgContent: (content) => set({ svgContent: content }),
+            setIsLoadingSvg: (loading) => set({ isLoadingSvg: loading }),
+            setAvailableRegions: (regions) => set({ availableRegions: regions }),
+            setKeyValuePairs: (pairs) => set({ keyValuePairs: pairs }),
+            setMatchResults: (results) => set({ matchResults: results }),
+            setSelectedDataColumn: (column) => set({ selectedDataColumn: column }),
+            setSelectedRegionColumn: (column) => set({ selectedRegionColumn: column }),
+            setSelectedColorScheme: (scheme) => set({ selectedColorScheme: scheme }),
+            setClassificationMethod: (method) => set({ classificationMethod: method }),
+            setNumberOfBuckets: (buckets) => set({ numberOfBuckets: buckets }),
+            setDataClassification: (classification) => set({ dataClassification: classification }),
+            setShowMismatches: (show) => set({ showMismatches: show }),
+
+            // helper actions
+            addKeyValuePair: () => {
+                const { keyValuePairs } = get()
+                const newId = (keyValuePairs.length + 1).toString()
+                set({ keyValuePairs: [...keyValuePairs, { key: '', value: '', id: newId }] })
+            },
+
+            removeKeyValuePair: (id) => {
+                const { keyValuePairs } = get()
+                if (keyValuePairs.length > 1) {
+                    set({ keyValuePairs: keyValuePairs.filter(pair => pair.id !== id) })
+                }
+            },
+            updateKeyValuePair: (id, field, value) => {
+                const { keyValuePairs } = get()
+                set({
+                    keyValuePairs: keyValuePairs.map(pair =>
+                        pair.id === id ? { ...pair, [field]: value } : pair
+                    )
+                })
+            },
+            clearAllData: () => set({
+                csvFile: null,
+                csvData: [],
+                validationResult: null,
+                uploadError: null,
+                keyValuePairs: [{ key: '', value: '', id: '1' }],
+                matchResults: [],
+                selectedDataColumn: '',
+                selectedRegionColumn: '',
+                dataClassification: null,
+                mapTitle: '',
+                svgContent: '',
+                availableRegions: []
+            })
+        }),
+        {
+            name: 'choropleth-map-store',
+            storage: createJSONStorage(() => {
+                // check if we are in browser environment
+                if (typeof window !== 'undefined') {
+                    return localStorage
+                }
+
+                // return a dummy storae for SSR
+                return {
+                    getItem: () => null,
+                    setItem: () => { },
+                    removeItem: () => { }
+                }
+            }),
+
+            partialize: (state) => ({
+                csvData: state.csvData,
+                validationResult: state.validationResult,
+                mapTitle: state.mapTitle,
+                availableRegions: state.availableRegions,
+                keyValuePairs: state.keyValuePairs,
+                matchResults: state.matchResults,
+                selectedDataColumn: state.selectedDataColumn,
+                selectedRegionColumn: state.selectedRegionColumn,
+                selectedColorScheme: state.selectedColorScheme,
+                classificationMethod: state.classificationMethod,
+                numberOfBuckets: state.numberOfBuckets,
+                dataClassification: state.dataClassification,
+                showMismatches: state.showMismatches
+            }),
+            onRehydrateStorage: () => (state) => {
+                // set hydration flag when rehydration is complete
+                state?.setHasHydrated(true)
+            }
+        }
+    )
+)
