@@ -1,12 +1,15 @@
+import { rejects } from 'assert'
+import { request } from 'http'
+import { resolve } from 'path'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
 // Types and interfaces
-interface CSVRow {
+export interface CSVRow {
     [key: string]: string | number
 }
 
-interface ValidationResult {
+export interface ValidationResult {
     isValid: boolean
     errors: string[]
     warnings: string[]
@@ -14,7 +17,7 @@ interface ValidationResult {
     columnCount: number
 }
 
-interface MatchResult {
+export interface MatchResult {
     original: string
     matched?: string
     confidence: number
@@ -25,7 +28,7 @@ interface MatchResult {
     }>
 }
 
-interface ColorScheme {
+export interface ColorScheme {
     id: string
     name: string
     type: 'sequential' | 'diverging' | 'categorical' | 'custom'
@@ -34,20 +37,20 @@ interface ColorScheme {
     interpolation?: 'linear' | 'cubic' | 'basis'
 }
 
-interface ClassificationMethod {
+export interface ClassificationMethod {
     id: string
     name: string
     type: 'equalInterval' | 'quantile' | 'natural' | 'manual'
 }
 
-interface DataClassification {
+export interface DataClassification {
     method: ClassificationMethod
     buckets: number
     breaks: number[]
     labels: string[]
 }
 
-interface KeyValuePair {
+export interface KeyValuePair {
     key: string
     value: string
     id: string
@@ -55,7 +58,7 @@ interface KeyValuePair {
 
 
 // Predefined color schemes
-const PRESET_SCHEMES: Record<string, ColorScheme[]> = {
+export const PRESET_SCHEMES: Record<string, ColorScheme[]> = {
     sequential: [
         { id: 'buenos-aries', name: 'Buenos-Aries', type: 'sequential', colors: ['#f7fbff', '#08519c'], accessibilityCompliant: true },
         { id: 'bucharest', name: 'Bucharest', type: 'sequential', colors: ['#fff5f0', '#a50f15'], accessibilityCompliant: true },
@@ -77,7 +80,7 @@ const PRESET_SCHEMES: Record<string, ColorScheme[]> = {
     ]
 }
 
-const CLASSIFICATION_METHODS: ClassificationMethod[] = [
+export const CLASSIFICATION_METHODS: ClassificationMethod[] = [
     { id: 'equalInterval', name: 'Equal Intervals', type: 'equalInterval' },
     { id: 'quantile', name: 'Quantiles', type: 'quantile' },
     { id: 'natural', name: 'Natural Breaks (Jenks)', type: 'natural' },
@@ -173,7 +176,7 @@ export const useMapStore = create<MapStoreState>()(
 
             // hydration state for nextjs
             _hasHydrated: false,
-            setHasHydrated: (hasHydrated: boolean) => (
+            setHasHydrated: (hasHydrated: boolean) => set(
                 { _hasHydrated: hasHydrated }
             ),
             // Actions
@@ -262,12 +265,238 @@ export const useMapStore = create<MapStoreState>()(
                 classificationMethod: state.classificationMethod,
                 numberOfBuckets: state.numberOfBuckets,
                 dataClassification: state.dataClassification,
-                showMismatches: state.showMismatches
+                showMismatches: state.showMismatches,
+
             }),
             onRehydrateStorage: () => (state) => {
                 // set hydration flag when rehydration is complete
                 state?.setHasHydrated(true)
-            }
+            },
+            skipHydration: false,
         }
     )
 )
+
+// IndexedDB utilities for storing complete maps
+export interface SavedMap {
+    id: string
+    title: string
+    svgContent: string
+    styledSvgContent: string
+    csvData: CSVRow[]
+    keyValuePairs: KeyValuePair[]
+    colorScheme: ColorScheme
+    classificationMethod: ClassificationMethod
+    numberOfBuckets: number
+    dataClassification: DataClassification | null
+    matchResults: MatchResult[]
+    createdAt: Date
+    updatedAt: Date
+    thumbnailDataUrl?: string
+}
+class MapDatabase {
+    private dbName = 'ChloroplethMapsDB'
+    private version = 1
+    private db: IDBDatabase | null = null
+
+
+    async init(): Promise<void> {
+        if (typeof window === 'undefined') {
+            throw new Error('IndexedDB is not available in the server environment')
+        }
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, this.version)
+
+            request.onerror = () => reject(request.error)
+
+            request.onsuccess = () => {
+                this.db = request.result
+                resolve()
+            }
+            request.onupgradeneeded = (event) => {
+                const db = (event.target as IDBOpenDBRequest).result
+                if (!db.objectStoreNames.contains('maps')) {
+                    const store = db.createObjectStore('maps', { keyPath: 'id' })
+                    store.createIndex('title', 'title', { unique: false })
+                }
+            }
+        })
+    }
+
+    async saveMap(mapData: any): Promise<string> {
+        if (!this.db) {
+            await this.init()
+        }
+
+        return new Promise((resolve, reject) => {
+
+            const id = `map_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+            const now = new Date()
+
+            const savedMap = {
+                ...mapData,
+                id,
+                createdAt: now,
+                updatedAt: now
+            }
+            const transaction = this.db!.transaction(['maps'], 'readwrite')
+            const store = transaction.objectStore('maps')
+            const request = store.add(savedMap)
+
+            request.onerror = () => reject(request.error)
+            request.onsuccess = () => resolve(id)
+
+        })
+    }
+    async updateMap(id: string, mapData: Partial<SavedMap>): Promise<void> {
+        if (!this.db) {
+            await this.init()
+        }
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['maps'], 'readwrite')
+            const store = transaction.objectStore('maps')
+            const getRequest = store.get(id)
+
+            getRequest.onsuccess = () => {
+                const existingMap = getRequest.result
+                if (!existingMap) {
+                    reject(new Error('Map not found'))
+                    return
+                }
+
+                const updatedMap: SavedMap = {
+                    ...existingMap,
+                    ...mapData,
+                    updatedAt: new Date()
+                }
+
+                const putRequest = store.put(updatedMap)
+                putRequest.onerror = () => reject(putRequest.error)
+                putRequest.onsuccess = () => resolve()
+            }
+
+            getRequest.onerror = () => reject(getRequest.error)
+        })
+    }
+
+    async getMap(id: string): Promise<SavedMap | null> {
+        if (!this.db) {
+            await this.init()
+        }
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['maps'], 'readonly')
+            const store = transaction.objectStore('maps')
+            const getRequest = store.get('id')
+
+            getRequest.onerror = () => reject(getRequest.error)
+            getRequest.onsuccess = () => resolve(getRequest.result || null)
+
+        })
+    }
+
+    async getAllMaps(): Promise<SavedMap[]> {
+        if (!this.db) {
+            await this.init()
+        }
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['maps'], 'readonly')
+            const store = transaction.objectStore('maps')
+            const getAllRequest = store.getAll()
+
+            getAllRequest.onerror = () => reject(getAllRequest.error)
+            getAllRequest.onsuccess = () => {
+                const maps = getAllRequest.result.sort((a, b) =>
+                    new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                resolve(maps)
+            }
+
+        })
+    }
+
+    async deleteMap(id: string): Promise<void> {
+        if (!this.db) await this.init()
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db!.transaction(['maps'], 'readwrite')
+            const store = transaction.objectStore('maps')
+            const request = store.delete(id)
+
+            request.onerror = () => reject(request.error)
+            request.onsuccess = () => resolve()
+        })
+    }
+
+    async searchMaps(query: string): Promise<SavedMap[]> {
+        const allMaps = await this.getAllMaps()
+        const lowercaseQuery = query.toLowerCase()
+
+        return allMaps.filter(map =>
+            map.title.toLowerCase().includes(lowercaseQuery)
+        )
+    }
+}
+
+export const mapDatabase = new MapDatabase()
+
+export const useMapOperations = () => {
+    const store = useMapStore()
+
+    const saveCurrentMap = async (styledSvgContent: string, thumbnailDataUrl?: string) => {
+        try {
+            await mapDatabase.init()
+
+            const mapData = {
+                title: store.mapTitle || 'Untitled Map',
+                svgContent: store.svgContent,
+                styledSvgContent,
+                csvData: store.csvData,
+                keyValuePairs: store.keyValuePairs,
+                colorScheme: store.selectedColorScheme,
+                classificationMethod: store.classificationMethod,
+                numberOfBuckets: store.numberOfBuckets,
+                dataClassification: store.dataClassification,
+                matchResults: store.matchResults,
+                thumbnailDataUrl
+            }
+
+            const id = await mapDatabase.saveMap(mapData)
+            return id
+        } catch (error) {
+            console.error('Error saving map:', error)
+            throw error
+        }
+    }
+
+    const loadMap = async (id: string) => {
+        try {
+            const savedMap = await mapDatabase.getMap(id)
+            if (!savedMap) throw new Error('Map not found')
+
+            // Restore all state from saved map
+            store.setMapTitle(savedMap.title)
+            store.setSvgContent(savedMap.svgContent)
+            store.setCsvData(savedMap.csvData)
+            store.setKeyValuePairs(savedMap.keyValuePairs)
+            store.setSelectedColorScheme(savedMap.colorScheme)
+            store.setClassificationMethod(savedMap.classificationMethod)
+            store.setNumberOfBuckets(savedMap.numberOfBuckets)
+            store.setDataClassification(savedMap.dataClassification)
+            store.setMatchResults(savedMap.matchResults)
+
+            return savedMap
+        } catch (error) {
+            console.error('Error loading map:', error)
+            throw error
+        }
+    }
+
+    return {
+        saveCurrentMap,
+        loadMap,
+        database: mapDatabase
+    }
+}
+

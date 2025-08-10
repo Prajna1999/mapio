@@ -24,81 +24,40 @@ import * as d3 from 'd3'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
 
-// Types and interfaces
-interface CSVRow {
-    [key: string]: string | number
+// Import Zustand store and utilities
+import {
+    useMapStore,
+    useMapOperations,
+    PRESET_SCHEMES,
+    CLASSIFICATION_METHODS,
+    type CSVRow,
+    type ValidationResult,
+    type MatchResult,
+    type ColorScheme,
+    type ClassificationMethod,
+    type DataClassification
+} from '../../stores/map-store'
+
+import { SavedMapsModal } from '@/components/saved-maps-modal'
+
+// Loading skeleton component
+function MapEditorSkeleton() {
+    return (
+        <div className="min-h-screen bg-background animate-pulse">
+            <div className="border-b p-4">
+                <div className="max-w-7xl mx-auto flex items-center justify-between">
+                    <div className="w-20 h-8 bg-muted rounded"></div>
+                    <div className="w-40 h-6 bg-muted rounded"></div>
+                    <div className="w-20 h-8 bg-muted rounded"></div>
+                </div>
+            </div>
+            <div className="flex flex-col lg:flex-row gap-2 p-2">
+                <div className="w-full lg:w-1/2 h-96 bg-muted rounded"></div>
+                <div className="w-full lg:w-1/2 h-96 bg-muted rounded"></div>
+            </div>
+        </div>
+    )
 }
-
-interface ValidationResult {
-    isValid: boolean
-    errors: string[]
-    warnings: string[]
-    rowCount: number
-    columnCount: number
-}
-
-interface MatchResult {
-    original: string
-    matched?: string
-    confidence: number
-    suggestions: Array<{
-        match: string
-        confidence: number
-        reason: 'exact' | 'alias' | 'fuzzy'
-    }>
-}
-
-interface ColorScheme {
-    id: string
-    name: string
-    type: 'sequential' | 'diverging' | 'categorical' | 'custom'
-    colors: string[]
-    accessibilityCompliant: boolean
-    interpolation?: 'linear' | 'cubic' | 'basis'
-}
-
-interface ClassificationMethod {
-    id: string
-    name: string
-    type: 'equalInterval' | 'quantile' | 'natural' | 'manual'
-}
-
-interface DataClassification {
-    method: ClassificationMethod
-    buckets: number
-    breaks: number[]
-    labels: string[]
-}
-
-// Predefined color schemes
-const PRESET_SCHEMES: Record<string, ColorScheme[]> = {
-    sequential: [
-        { id: 'buenos-aries', name: 'Buenos-Aries', type: 'sequential', colors: ['#f7fbff', '#08519c'], accessibilityCompliant: true },
-        { id: 'bucharest', name: 'Bucharest', type: 'sequential', colors: ['#fff5f0', '#a50f15'], accessibilityCompliant: true },
-        { id: 'bellagio', name: 'Bellagio', type: 'sequential', colors: ['#f7fcf5', '#00441b'], accessibilityCompliant: true },
-        { id: 'helsinki', name: 'Helsinki', type: 'sequential', colors: ['#fcfbfd', '#3f007d'], accessibilityCompliant: true },
-        { id: 'dhaka', name: 'Dhaka', type: 'sequential', colors: ['#f7fbff', '#0c4d9c'], accessibilityCompliant: true },
-        { id: 'paris', name: 'Paris', type: 'sequential', colors: ['#fff5eb', '#8b2500'], accessibilityCompliant: true },
-
-    ],
-    diverging: [
-        { id: 'rdbu', name: 'Red-Blue', type: 'diverging', colors: ['#b2182b', '#f7f7f7', '#2166ac'], accessibilityCompliant: true },
-        { id: 'rdylgn', name: 'Red-Yellow-Green', type: 'diverging', colors: ['#d73027', '#ffffbf', '#1a9850'], accessibilityCompliant: true },
-        { id: 'brbg', name: 'Brown-Blue-Green', type: 'diverging', colors: ['#8c510a', '#f5f5f5', '#01665e'], accessibilityCompliant: true },
-        { id: 'piyg', name: 'Pink-Yellow-Green', type: 'diverging', colors: ['#e9a3c9', '#f7f7f7', '#a1d76a'], accessibilityCompliant: true }
-    ],
-    categorical: [
-        { id: 'set1', name: 'Set 1', type: 'categorical', colors: ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00', '#ffff33', '#a65628', '#f781bf'], accessibilityCompliant: true },
-        { id: 'set2', name: 'Set 2', type: 'categorical', colors: ['#66c2a5', '#fc8d62', '#8da0cb', '#e78ac3', '#a6d854', '#ffd92f', '#e5c494', '#b3b3b3'], accessibilityCompliant: true }
-    ]
-}
-
-const CLASSIFICATION_METHODS: ClassificationMethod[] = [
-    { id: 'equalInterval', name: 'Equal Intervals', type: 'equalInterval' },
-    { id: 'quantile', name: 'Quantiles', type: 'quantile' },
-    { id: 'natural', name: 'Natural Breaks (Jenks)', type: 'natural' },
-    { id: 'manual', name: 'Manual', type: 'manual' }
-]
 
 function SVGFullScreenContent() {
     const searchParams = useSearchParams()
@@ -109,58 +68,59 @@ function SVGFullScreenContent() {
     const alt = searchParams.get('alt') || 'SVG Image'
 
     // File and data management
-    const [csvFile, setCsvFile] = useState<File | null>(null)
-    const [csvData, setCsvData] = useState<CSVRow[]>([])
-    const [validationResult, setValidationResult] = useState<ValidationResult | null>(null)
-    const [isDragging, setIsDragging] = useState(false)
-    const [isProcessing, setIsProcessing] = useState(false)
-    const [uploadError, setUploadError] = useState<string | null>(null)
+    const {
+        // File and data management
+        csvFile, setCsvFile,
+        csvData, setCsvData,
+        validationResult, setValidationResult,
+        isDragging, setIsDragging,
+        isProcessing, setIsProcessing,
+        uploadError, setUploadError,
 
-    // Map and visualization
-    const [mapTitle, setMapTitle] = useState('')
-    const [svgContent, setSvgContent] = useState<string>('')
-    const [isLoadingSvg, setIsLoadingSvg] = useState(false)
-    const [availableRegions, setAvailableRegions] = useState<string[]>([])
+        // Map and visualization
+        mapTitle, setMapTitle,
+        svgContent, setSvgContent,
+        isLoadingSvg, setIsLoadingSvg,
+        availableRegions, setAvailableRegions,
 
-    // Data mapping and matching
-    const [keyValuePairs, setKeyValuePairs] = useState<Array<{ key: string, value: string, id: string }>>([
-        { key: '', value: '', id: '1' }
-    ])
-    const [matchResults, setMatchResults] = useState<MatchResult[]>([])
-    const [selectedDataColumn, setSelectedDataColumn] = useState<string>('')
-    const [selectedRegionColumn, setSelectedRegionColumn] = useState<string>('')
+        // Data mapping and matching
+        keyValuePairs, setKeyValuePairs,
+        matchResults, setMatchResults,
+        selectedDataColumn, setSelectedDataColumn,
+        selectedRegionColumn, setSelectedRegionColumn,
 
-    // Color and styling
-    const [selectedColorScheme, setSelectedColorScheme] = useState<ColorScheme>(PRESET_SCHEMES.sequential[0])
-    const [classificationMethod, setClassificationMethod] = useState<ClassificationMethod>(CLASSIFICATION_METHODS[0])
-    const [numberOfBuckets, setNumberOfBuckets] = useState(5)
-    const [dataClassification, setDataClassification] = useState<DataClassification | null>(null)
+        // Color and styling
+        selectedColorScheme, setSelectedColorScheme,
+        classificationMethod, setClassificationMethod,
+        numberOfBuckets, setNumberOfBuckets,
+        dataClassification, setDataClassification,
 
-    // Advanced features  
-    const [showMismatches, setShowMismatches] = useState(false)
+        // Advanced features
+        showMismatches, setShowMismatches,
 
+        // Helper actions
+        addKeyValuePair,
+        removeKeyValuePair,
+        updateKeyValuePair,
+        clearAllData,
+    } = useMapStore()
+
+    // Map operations for saving/loading
+    const { saveCurrentMap, loadMap } = useMapOperations()
+
+    // Local state for SavedMapsModal
+    const [showSavedMaps, setShowSavedMaps] = useState(false)
+
+    // Wait for hydration to complete
+    // if (!_hasHydrated) {
+    //     return <MapEditorSkeleton />
+    // }
     const handleBack = () => {
         router.back()
     }
 
-    const addKeyValuePair = () => {
-        const newId = (keyValuePairs.length + 1).toString()
-        setKeyValuePairs([...keyValuePairs, { key: '', value: '', id: newId }])
-    }
 
-    const removeKeyValuePair = (id: string) => {
-        if (keyValuePairs.length > 1) {
-            setKeyValuePairs(keyValuePairs.filter(pair => pair.id !== id))
-        }
-    }
-
-    const updateKeyValuePair = (id: string, field: 'key' | 'value', newValue: string) => {
-        setKeyValuePairs(keyValuePairs.map(pair =>
-            pair.id === id ? { ...pair, [field]: newValue } : pair
-        ))
-    }
-
-    const populateFromCSV = () => {
+    const populateFromCSV = useCallback(() => {
         if (csvData.length > 0) {
             const pairs = csvData.map((row, index) => ({
                 key: String(Object.values(row)[0] ?? ''),
@@ -169,7 +129,7 @@ function SVGFullScreenContent() {
             }))
             setKeyValuePairs(pairs.length > 0 ? pairs : [{ key: '', value: '', id: '1' }])
         }
-    }
+    }, [csvData, setKeyValuePairs])
 
     // Extract region names from SVG (by ID and class attributes)
     const extractRegionsFromSVG = useCallback((svgText: string): string[] => {
@@ -178,6 +138,7 @@ function SVGFullScreenContent() {
         // Extract IDs
         const idMatches = svgText.match(/id="([^"]+)"/g) || []
         idMatches.forEach(match => {
+
             const id = match.match(/id="([^"]+)"/)?.[1]
             if (id && !id.startsWith('svg-') && !id.startsWith('def-')) {
                 regions.add(id)
@@ -187,6 +148,7 @@ function SVGFullScreenContent() {
         // Extract classes that might represent regions
         const classMatches = svgText.match(/class="([^"]+)"/g) || []
         classMatches.forEach(match => {
+
             const classes = match.match(/class="([^"]+)"/)?.[1]?.split(/\s+/) || []
             classes.forEach(cls => {
                 if (cls && !cls.includes('st') && cls.length > 2) {
@@ -215,7 +177,7 @@ function SVGFullScreenContent() {
         } finally {
             setIsLoadingSvg(false)
         }
-    }, [src, extractRegionsFromSVG])
+    }, [src, extractRegionsFromSVG, setIsLoadingSvg, setSvgContent, setAvailableRegions])
 
     // Fuzzy matching with Fuse.js
     const performFuzzyMatching = useCallback((csvRegions: string[], svgRegions: string[]): MatchResult[] => {
@@ -352,7 +314,7 @@ function SVGFullScreenContent() {
                 setDataClassification(classification)
             }
         }
-    }, [csvData, selectedDataColumn, classificationMethod, numberOfBuckets, classifyData])
+    }, [csvData, selectedDataColumn, classificationMethod, numberOfBuckets, classifyData, setDataClassification])
 
     const getStyledSvgContent = useCallback(() => {
         if (!svgContent) return ''
@@ -441,6 +403,50 @@ function SVGFullScreenContent() {
 
         return styledSvg
     }, [svgContent, csvData, selectedDataColumn, selectedRegionColumn, matchResults, getColorForValue, keyValuePairs])
+
+    // Save map functionality
+    const saveMap = useCallback(async () => {
+        try {
+            const styledSvg = getStyledSvgContent()
+
+            // Generate thumbnail (optional)
+            const mapElement = document.querySelector('.map-container') as HTMLElement
+            let thumbnailDataUrl: string | undefined
+
+            if (mapElement) {
+                try {
+                    const canvas = await html2canvas(mapElement, {
+                        backgroundColor: '#ffffff',
+                        scale: 0.5, // Lower scale for thumbnail
+                        useCORS: true,
+                        allowTaint: true
+                    })
+                    thumbnailDataUrl = canvas.toDataURL('image/png')
+                } catch (error) {
+                    console.warn('Could not generate thumbnail:', error)
+                }
+            }
+
+            const mapId = await saveCurrentMap(styledSvg, thumbnailDataUrl)
+            alert(`Map saved successfully! ID: ${mapId}`)
+
+        } catch (error) {
+            console.error('Error saving map:', error)
+            alert('Error saving map. Please try again.')
+        }
+    }, [saveCurrentMap, getStyledSvgContent])
+
+    // Load map functionality
+    const handleLoadMap = useCallback(async (mapId: string) => {
+        try {
+            await loadMap(mapId)
+            setShowSavedMaps(false)
+            alert('Map loaded successfully!')
+        } catch (error) {
+            console.error('Error loading map:', error)
+            alert('Error loading map. Please try again.')
+        }
+    }, [loadMap])
 
     // Export functions
     const exportAsPNG = useCallback(async () => {
@@ -605,7 +611,7 @@ function SVGFullScreenContent() {
         }
 
         if (file.size > 20 * 1024 * 1024) { // 20 MB limit
-            setUploadError('File size must be less than 5MB')
+            setUploadError('File size must be less than 20MB')
             return
         }
 
@@ -636,7 +642,7 @@ function SVGFullScreenContent() {
         } finally {
             setIsProcessing(false)
         }
-    }, [parseCSV])
+    }, [parseCSV, setCsvFile, setCsvData, setValidationResult, setIsProcessing, setUploadError, setSelectedRegionColumn, setSelectedDataColumn])
 
     // Trigger fuzzy matching when data and regions are available
     useEffect(() => {
@@ -645,17 +651,17 @@ function SVGFullScreenContent() {
             const matchResults = performFuzzyMatching(csvRegions, availableRegions)
             setMatchResults(matchResults)
         }
-    }, [csvData, selectedRegionColumn, availableRegions, performFuzzyMatching])
+    }, [csvData, selectedRegionColumn, availableRegions, performFuzzyMatching, setMatchResults])
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(true)
-    }, [])
+    }, [setIsDragging])
 
     const handleDragLeave = useCallback((e: React.DragEvent) => {
         e.preventDefault()
         setIsDragging(false)
-    }, [])
+    }, [setIsDragging])
 
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault()
@@ -665,7 +671,7 @@ function SVGFullScreenContent() {
         if (files.length > 0) {
             handleFileUpload(files[0])
         }
-    }, [handleFileUpload])
+    }, [handleFileUpload, setIsDragging])
 
     const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files
@@ -1227,18 +1233,21 @@ function SVGFullScreenContent() {
                     </Tabs>
                 </div>
             </div>
+
+            {/* Add SavedMapsModal */}
+            <SavedMapsModal
+                open={showSavedMaps}
+                onClose={() => setShowSavedMaps(false)}
+                onLoadMap={handleLoadMap}
+            />
         </div>
     )
 }
 
 export default function SVGFullScreen() {
     return (
-        <Suspense fallback={
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-pulse">Loading...</div>
-            </div>
-        }>
-            <SVGFullScreenContent />
-        </Suspense>
+        // <Suspense fallback={<MapEditorSkeleton />}>
+        <SVGFullScreenContent />
+        // </Suspense>
     )
 }
