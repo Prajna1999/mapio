@@ -1,20 +1,5 @@
 'use client'
 
-import { AppSidebar } from "@/components/app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
 import { CardDialog } from "@/components/card-dialog"
 import SVGEmbed from "@/components/svg-embed"
 import { Label } from "@/components/ui/label"
@@ -30,109 +15,128 @@ export default function Page() {
     })
     router.push(`/svg-fullscreen?${params.toString()}`)
   }
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator
-            orientation="vertical"
-            className="mr-2 data-[orientation=vertical]:h-4"
-          />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">
-                  Building Your Application
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <div className="flex flex-col min-h-[calc(100vh-64px)]">
-          {/* Simple Header */}
-          <div className="text-center py-8 px-6">
-            <h1 className="text-3xl font-bold mb-2">Map Editor Dashboard</h1>
-            <p className="text-muted-foreground">Click on the map below to start editing</p>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      {/* Hero */}
+      <div className="text-center py-16 px-6 mb-4">
+        <h2 className="text-5xl font-bold mb-4 bg-gradient-to-r from-gray-900 to-blue-800 bg-clip-text text-transparent">
+          Mapio
+        </h2>
+        <p className="text-gray-600 text-xl mx-auto">
+          The fastest way to create map visualization!
+        </p>
+      </div>
 
-          {/* Main Content - Centered SVG */}
-          <div className="flex-1 flex justify-center items-center px-6">
-            <CardDialog
-              trigger={<SVGEmbed src="/world_mercator_india_highlighted.svg" alt="World Map" />}
-              title="Edit Map Configuration"
-              description="Customize your map settings and preferences."
-            >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="w-full h-64 flex flex-col border rounded-lg p-3">
-                  <div className="flex-1 flex items-center justify-center overflow-hidden">
-                    <SVGEmbed
-                      src="/states_of_india_black.svg"
-                      alt="States of India Map"
-                      onClick={() => handleSVGClick("/states_of_india_black_path.svg", "States of India Map")}
-                      className="w-full h-full"
-                      containerClassName="w-full h-full flex justify-center items-center"
-                      imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                      cardClassName="w-full h-full border-0 shadow-none"
-                      showHeader={false}
-                    />
-                  </div>
-                  <Label className="text-center text-sm mt-2 font-medium">States of India</Label>
+      {/* Main Content */}
+      <div className="flex justify-center px-6 pb-16">
+        <CardDialog
+          trigger={
+            <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+              <SVGEmbed
+                src="/world_mercator_india_highlighted.svg"
+                alt="World Map"
+              />
+            </div>
+          }
+          title="Choose Map Type"
+          description="Select your preferred geographical boundary level"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
+            {/* States Card */}
+            <div className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+              <div className="p-4">
+                <div className="h-48 bg-gray-50 rounded-lg mb-4 flex items-center justify-center">
+                  <SVGEmbed
+                    src="/states_of_india_black.svg"
+                    alt="States of India Map"
+                    onClick={() => handleSVGClick("/states_of_india_black_path.svg", "States of India Map")}
+                    className="w-full h-full"
+                    containerClassName="w-full h-full flex justify-center items-center"
+                    imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                    cardClassName="w-full h-full border-0 shadow-none bg-transparent"
+                    showHeader={false}
+                  />
                 </div>
-
-                <div className="w-full h-64 flex flex-col border rounded-lg p-3">
-                  <div className="flex-1 flex items-center justify-center overflow-hidden">
-                    <SVGEmbed
-                      src="/public/india_district_maps_black.svg"
-                      alt="Districts of India Map"
-                      onClick={() => handleSVGClick("/india_district_map_latest.svg", "Districts of India Map")}
-                      className="w-full h-full"
-                      containerClassName="w-full h-full flex justify-center items-center"
-                      imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                      cardClassName="w-full h-full border-0 shadow-none"
-                      showHeader={false}
-                    />
-                  </div>
-                  <Label className="text-center text-sm mt-2 font-medium">Districts of India</Label>
-                </div>
-
-                <div className="w-full h-64 flex flex-col border rounded-lg p-3">
-                  <div className="flex-1 flex items-center justify-center overflow-hidden">
-                    <SVGEmbed
-                      src="/loksabha_constituencies_of_india_path.svg"
-                      alt="Loksabha Constituencies of India Map"
-                      onClick={() => handleSVGClick("/loksabha_constituencies_of_india_path.svg", "Loksabha Constituencies of India Map")}
-                      className="w-full h-full"
-                      containerClassName="w-full h-full flex justify-center items-center"
-                      imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                      cardClassName="w-full h-full border-0 shadow-none"
-                      showHeader={false}
-                    />
-                  </div>
-                  <Label className="text-center text-sm mt-2 font-medium">Loksabha Constituencies of India</Label>
-                </div>
+                <Label className="block text-center font-medium text-gray-800">
+                  States of India
+                </Label>
+                <p className="text-sm text-gray-600 text-center mt-1">28 states & 8 UTs</p>
               </div>
-            </CardDialog>
-          </div>
+            </div>
 
-          {/* Simple Footer */}
-          <div className="border-t p-4">
-            <div className="flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
-              <div>Ready to visualize your data</div>
-              <div className="flex gap-4 mt-2 sm:mt-0">
-                <span>3 Templates Available</span>
-                <span>•</span>
-                <span>Interactive Editor</span>
+            {/* Districts Card */}
+            <div className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+              <div className="p-4">
+                <div className="h-48 bg-gray-50 rounded-lg mb-4 flex items-center justify-center">
+                  <SVGEmbed
+                    src="/india_district_maps_black_enlarged.svg"
+                    alt="Districts of India Map"
+                    onClick={() => handleSVGClick("/Official_India_Map_with_Districts_2011_Census.svg", "Districts of India Map")}
+                    className="w-full h-full"
+                    containerClassName="w-full h-full flex justify-center items-center"
+                    imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                    cardClassName="w-full h-full border-0 shadow-none bg-transparent"
+                    showHeader={false}
+                  />
+                </div>
+                <Label className="block text-center font-medium text-gray-800">
+                  Districts of India
+                </Label>
+                <p className="text-sm text-gray-600 text-center mt-1">700+ districts</p>
+              </div>
+            </div>
+
+            {/* Constituencies Card */}
+            <div className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+              <div className="p-4">
+                <div className="h-48 bg-gray-50 rounded-lg mb-4 flex items-center justify-center">
+                  <SVGEmbed
+                    src="/india_loksabha_constituencies.svg"
+                    alt="Loksabha Constituencies of India Map"
+                    onClick={() => handleSVGClick("/loksabha_constituencies_of_india_path.svg", "Loksabha Constituencies of India Map")}
+                    className="w-full h-full"
+                    containerClassName="w-full h-full flex justify-center items-center"
+                    imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                    cardClassName="w-full h-full border-0 shadow-none bg-transparent"
+                    showHeader={false}
+                  />
+                </div>
+                <Label className="block text-center font-medium text-gray-800">
+                  Loksabha Constituencies
+                </Label>
+                <p className="text-sm text-gray-600 text-center mt-1">543 constituencies</p>
+              </div>
+            </div>
+          </div>
+        </CardDialog>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t bg-gradient-to-r from-gray-50 to-blue-50/50">
+        <div className=" mx-auto px-6 py-12">
+          <div className="text-center space-y-6">
+            <h3 className="text-lg font-semibold text-gray-800">Start Creating Today</h3>
+            <p className="text-gray-600  mx-auto">
+              Choose from three detailed map types and create stunning visualizations with our interactive editor
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-6 sm:gap-8 text-sm text-gray-500">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span>3 Map Types</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Real-time Editing</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span>Indian Geography</span>
               </div>
             </div>
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   )
 }

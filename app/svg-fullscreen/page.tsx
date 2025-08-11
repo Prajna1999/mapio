@@ -701,9 +701,9 @@ function SVGFullScreenContent() {
             {/* Main content area */}
             <div className="flex flex-col lg:flex-row gap-2">
                 {/* Left half - SVG Map Editor */}
-                <div className="w-full lg:w-1/2 p-1 md:p-2">
-                    <Card className="h-full flex flex-col border-0 md:border shadow-none md:shadow-sm">
-                        <CardContent className="flex-1 flex flex-col p-1 md:p-3">
+                <div className="w-full w-2xl lg:w-1/2 p-1 md:p-2 h-full">
+                    <Card className="flex flex-col border-0 md:border shadow-none md:shadow-sm">
+                        <CardContent className="flex-1 flex flex-col p-1 md:p-3 min-h-0">
                             {src ? (
                                 <div className="flex flex-col h-full">
                                     <div className="text-center mb-2 flex-shrink-0">

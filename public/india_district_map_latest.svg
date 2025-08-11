@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<svg id="map" width="720" height="720">
+<svg id="map" width="1000" height="1000">
     <defs>
         <filter id="sofGlow" height="300%" width="300%" x="-75%" y="-75%">
             <feMorphology operator="dilate" radius="4" in="SourceAlpha" result="thicken"></feMorphology>
