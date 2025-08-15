@@ -4,6 +4,7 @@ import { CardDialog } from "@/components/card-dialog"
 import SVGEmbed from "@/components/svg-embed"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
+import { Badge } from "@/components/ui/badge"
 
 export default function Page() {
   const router = useRouter()
@@ -68,14 +69,16 @@ export default function Page() {
             {/* Districts Card */}
             <div className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
               <div className="p-4">
-                <div className="h-48 bg-gray-50 rounded-lg mb-4 flex items-center justify-center">
+                <div className="h-48 bg-gray-50 rounded-lg mb-4 flex items-center justify-center relative">
+                  <Badge variant="default" className="absolute top-1 right-1">Coming Soon</Badge>
                   <SVGEmbed
                     src="/india_district_maps_black_enlarged.svg"
                     alt="Districts of India Map"
-                    onClick={() => handleSVGClick("/Official_India_Map_with_Districts_2011_Census.svg", "Districts of India Map")}
+                    // onClick={() => handleSVGClick("/Official_India_Map_with_Districts_2011_Census.svg", "Districts of India Map")}
+                    onClick={() => null}
                     className="w-full h-full"
                     containerClassName="w-full h-full flex justify-center items-center"
-                    imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                    imageClassName="max-w-full max-h-full object-contain cursor-not-allowed hover:scale-105 transition-transform duration-200"
                     cardClassName="w-full h-full border-0 shadow-none bg-transparent"
                     showHeader={false}
                   />
@@ -90,14 +93,16 @@ export default function Page() {
             {/* Constituencies Card */}
             <div className="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
               <div className="p-4">
-                <div className="h-48 bg-gray-50 rounded-lg mb-4 flex items-center justify-center">
+                <div className="h-48 bg-gray-50 rounded-lg mb-4 flex items-center justify-center relative">
+                  <Badge variant="default" className="absolute top-1 right-1">Coming Soon</Badge>
                   <SVGEmbed
                     src="/india_loksabha_constituencies.svg"
                     alt="Loksabha Constituencies of India Map"
-                    onClick={() => handleSVGClick("/loksabha_constituencies_of_india_path.svg", "Loksabha Constituencies of India Map")}
+                    // onClick={() => handleSVGClick("/loksabha_constituencies_of_india_path.svg", "Loksabha Constituencies of India Map")}
+                    onClick={() => null}
                     className="w-full h-full"
-                    containerClassName="w-full h-full flex justify-center items-center"
-                    imageClassName="max-w-full max-h-full object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                    containerClassName="w-full h-full flex justify-center items-center "
+                    imageClassName="max-w-full max-h-full object-contain cursor-not-allowed hover:scale-105 transition-transform duration-200"
                     cardClassName="w-full h-full border-0 shadow-none bg-transparent"
                     showHeader={false}
                   />
