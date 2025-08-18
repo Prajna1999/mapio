@@ -131,30 +131,57 @@ function SVGFullScreenContent() {
     }, [csvData, setKeyValuePairs])
 
     // Extract region names from SVG (by ID and class attributes)
+    // const extractRegionsFromSVG = useCallback((svgText: string): string[] => {
+    //     const regions = new Set<string>()
+
+    //     // Extract IDs
+    //     const idMatches = svgText.match(/id="([^"]+)"/g) || []
+    //     Array.from(idMatches).forEach(match => {
+
+    //         const id = match[1]
+    //         if (id && !id.startsWith('svg-') && !id.startsWith('def-')) {
+    //             regions.add(id)
+    //         }
+    //     })
+
+    //     // Extract classes that might represent regions
+    //     const classMatches = svgText.match(/class="([^"]+)"/g) || []
+    //     Array.from(classMatches).forEach(match => {
+
+    //         const classes = match.match(/class="([^"]+)"/)?.[1]?.split(/\s+/) || []
+    //         classes.forEach(cls => {
+    //             if (cls && !cls.includes('st') && cls.length > 2) {
+    //                 regions.add(cls)
+    //             }
+    //         })
+    //     })
+
+    //     return Array.from(regions).sort()
+    // }, [])
+
     const extractRegionsFromSVG = useCallback((svgText: string): string[] => {
         const regions = new Set<string>()
 
-        // Extract IDs
-        const idMatches = svgText.match(/id="([^"]+)"/g) || []
-        Array.from(idMatches).forEach(match => {
-
-            const id = match[1]
+        // Extract IDs - use matchAll to get captured groups
+        const idMatches = svgText.matchAll(/id="([^"]+)"/g)
+        for (const match of idMatches) {
+            const id = match[1] // First captured group
             if (id && !id.startsWith('svg-') && !id.startsWith('def-')) {
                 regions.add(id)
             }
-        })
+        }
 
         // Extract classes that might represent regions
-        const classMatches = svgText.match(/class="([^"]+)"/g) || []
-        Array.from(classMatches).forEach(match => {
-
-            const classes = match.match(/class="([^"]+)"/)?.[1]?.split(/\s+/) || []
+        const classMatches = svgText.matchAll(/class="([^"]+)"/g)
+        for (const match of classMatches) {
+            const classString = match[1] // First captured group
+            const classes = classString?.split(/\s+/) || []
             classes.forEach(cls => {
                 if (cls && !cls.includes('st') && cls.length > 2) {
                     regions.add(cls)
                 }
             })
-        })
+        }
 
         return Array.from(regions).sort()
     }, [])
@@ -331,7 +358,7 @@ function SVGFullScreenContent() {
         // Add responsive sizing to the SVG element itself
         styledSvg = styledSvg.replace(
             /<svg([^>]*?)(?:width="[^"]*"|height="[^"]*")*([^>]*)>/,
-            '<svg$1$2 viewBox="0 0 1200 1200" style="width: 100%; height: 100%;">'
+            '<svg$1$2 viewBox="0 0 1200 1300" style="width: 100%; height: 100%;">'
         )
 
         // Create simple value lookup from key-value pairs
