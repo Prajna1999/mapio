@@ -1336,8 +1336,8 @@ function SVGFullScreenContent() {
 
 export default function SVGFullScreen() {
     return (
-        // <Suspense fallback={<MapEditorSkeleton />}>
-        <SVGFullScreenContent />
-        // </Suspense>
+        <Suspense fallback={<MapEditorSkeleton />}>
+            <SVGFullScreenContent />
+        </Suspense>
     )
 }
