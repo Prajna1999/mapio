@@ -1,6 +1,4 @@
-import { rejects } from 'assert'
-import { request } from 'http'
-import { resolve } from 'path'
+
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 
@@ -56,6 +54,10 @@ export interface KeyValuePair {
     id: string
 }
 
+export interface MapLegendProps {
+    start?: number
+    end?: number
+}
 
 // Predefined color schemes
 export const PRESET_SCHEMES: Record<string, ColorScheme[]> = {

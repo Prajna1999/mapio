@@ -21,7 +21,8 @@ import Papa from 'papaparse'
 import Fuse from 'fuse.js'
 import chroma from 'chroma-js'
 import * as d3 from 'd3'
-import html2canvas from 'html2canvas'
+// import html2canvas from 'html2canvas'
+import html2canvas from 'html2canvas-pro'
 import jsPDF from 'jspdf'
 
 // Import Zustand store and utilities
@@ -39,6 +40,7 @@ import {
 } from '../../stores/map-store'
 
 import { SavedMapsModal } from '@/components/saved-maps-modal'
+import { MapLegend } from '@/components/legend'
 
 // Loading skeleton component
 function MapEditorSkeleton() {
@@ -111,10 +113,7 @@ function SVGFullScreenContent() {
     // Local state for SavedMapsModal
     const [showSavedMaps, setShowSavedMaps] = useState(false)
 
-    // Wait for hydration to complete
-    // if (!_hasHydrated) {
-    //     return <MapEditorSkeleton />
-    // }
+
     const handleBack = () => {
         router.back()
     }
@@ -137,9 +136,9 @@ function SVGFullScreenContent() {
 
         // Extract IDs
         const idMatches = svgText.match(/id="([^"]+)"/g) || []
-        idMatches.forEach(match => {
+        Array.from(idMatches).forEach(match => {
 
-            const id = match.match(/id="([^"]+)"/)?.[1]
+            const id = match[1]
             if (id && !id.startsWith('svg-') && !id.startsWith('def-')) {
                 regions.add(id)
             }
@@ -147,7 +146,7 @@ function SVGFullScreenContent() {
 
         // Extract classes that might represent regions
         const classMatches = svgText.match(/class="([^"]+)"/g) || []
-        classMatches.forEach(match => {
+        Array.from(classMatches).forEach(match => {
 
             const classes = match.match(/class="([^"]+)"/)?.[1]?.split(/\s+/) || []
             classes.forEach(cls => {
@@ -269,15 +268,21 @@ function SVGFullScreenContent() {
         }
     }, [])
 
+
+
     // Color generation with chroma.js
     const generateColorScale = useCallback((scheme: ColorScheme, buckets: number): string[] => {
         if (scheme.type === 'sequential' || scheme.type === 'diverging') {
-            return chroma.scale(scheme.colors).mode('lch').colors(buckets)
+            return chroma.scale(scheme.colors).mode('lch').colors(buckets).map(color => {
+                return typeof color === 'string' ? color : chroma(color).hex()
+            })
         } else if (scheme.type === 'categorical') {
             return scheme.colors.slice(0, buckets)
         } else {
             // Custom scheme
-            return chroma.scale(scheme.colors).colors(buckets)
+            return chroma.scale(scheme.colors).colors(buckets).map(color => {
+                return typeof color === 'string' ? color : chroma(color).hex()
+            })
         }
     }, [])
 
@@ -302,7 +307,9 @@ function SVGFullScreenContent() {
         const bucketIndex = breaks.findIndex((brk, i) => i > 0 && numValue <= brk) - 1
         const colors = generateColorScale(selectedColorScheme, dataClassification.buckets)
 
-        return colors[Math.max(0, Math.min(bucketIndex, colors.length - 1))] || '#e5e5e5'
+        const selectedColor = colors[Math.max(0, Math.min(bucketIndex, colors.length - 1))] || '#e5e5e5'
+        // Double-check that we have a hex string
+        return selectedColor.startsWith('#') ? selectedColor : chroma(selectedColor).hex()
     }, [dataClassification, keyValuePairs, selectedColorScheme, generateColorScale])
 
     // Update classification when data or settings change
@@ -323,86 +330,161 @@ function SVGFullScreenContent() {
 
         // Add responsive sizing to the SVG element itself
         styledSvg = styledSvg.replace(
-            /<svg([^>]*)>/,
-            '<svg$1 style="width: 100%; height: 100%; max-width: 100%; max-height: 100%;">'
+            /<svg([^>]*?)(?:width="[^"]*"|height="[^"]*")*([^>]*)>/,
+            '<svg$1$2 viewBox="0 0 1200 1200" style="width: 100%; height: 100%;">'
         )
 
-        // Use match results for more intelligent mapping
-        if (csvData.length > 0 && selectedDataColumn && selectedRegionColumn && matchResults.length > 0) {
-            csvData.forEach(row => {
-                const regionName = String(row[selectedRegionColumn])
-                const dataValue = row[selectedDataColumn]
+        // Create simple value lookup from key-value pairs
+        const valueMap = new Map<string, number>()
+        keyValuePairs.forEach(pair => {
+            if (pair.key && pair.value) {
+                const numValue = parseFloat(String(pair.value))
+                if (!isNaN(numValue)) {
+                    valueMap.set(pair.key, numValue)
+                }
+            }
+        })
 
-                // Find the matched SVG element
-                const matchResult = matchResults.find(m => m.original === regionName)
-                const svgElementId = matchResult?.matched
+        // Function to calculate centroid of an SVG path
+        const getPathCentroid = (pathData: string): { x: number, y: number } => {
+            // Parse SVG path and convert to absolute coordinates
+            const commands = pathData.match(/[mlhvcsqtaz][^mlhvcsqtaz]*/gi) || []
 
-                if (svgElementId && dataValue !== null && dataValue !== undefined) {
-                    const color = getColorForValue(dataValue)
+            let currentX = 0, currentY = 0
+            const points: { x: number, y: number }[] = []
 
-                    // Apply styling to the matched SVG element
-                    const styleValue = `fill: ${color}; stroke: #333; stroke-width: 0.5;`
+            for (const command of commands) {
+                const type = command[0].toLowerCase()
+                const coords = command.slice(1).trim().split(/[\s,]+/).map(Number).filter(n => !isNaN(n))
 
-                    // Try multiple patterns to find and style the element
-                    const patterns = [
-                        new RegExp(`(id="${svgElementId}"[^>]*?)style="[^"]*"`, 'g'),
-                        new RegExp(`(id="${svgElementId}"[^>]*?)(?=\\s|>)`, 'g'),
-                        new RegExp(`(class="[^"]*${svgElementId}[^"]*"[^>]*?)style="[^"]*"`, 'g'),
-                        new RegExp(`(class="[^"]*${svgElementId}[^"]*"[^>]*?)(?=\\s|>)`, 'g')
-                    ]
-
-                    let styled = false
-                    for (const pattern of patterns) {
-                        if (pattern.test(styledSvg)) {
-                            styledSvg = styledSvg.replace(pattern, `$1 style="${styleValue}"`)
-                            styled = true
-                            break
+                if (type === 'm') {
+                    // Move to
+                    if (command[0] === 'M') {
+                        // Absolute
+                        currentX = coords[0]
+                        currentY = coords[1]
+                    } else {
+                        // Relative
+                        currentX += coords[0]
+                        currentY += coords[1]
+                    }
+                    points.push({ x: currentX, y: currentY })
+                } else if (type === 'l') {
+                    // Line to
+                    for (let i = 0; i < coords.length; i += 2) {
+                        if (command[0] === 'L') {
+                            // Absolute
+                            currentX = coords[i]
+                            currentY = coords[i + 1]
+                        } else {
+                            // Relative
+                            currentX += coords[i]
+                            currentY += coords[i + 1]
                         }
-                    }
-
-                    // If no existing style attribute, add one
-                    if (!styled) {
-                        styledSvg = styledSvg.replace(
-                            new RegExp(`id="${svgElementId}"([^>]*)`, 'g'),
-                            `id="${svgElementId}"$1 style="${styleValue}"`
-                        )
+                        points.push({ x: currentX, y: currentY })
                     }
                 }
-            })
-        } else {
-            // Fallback to original key-value pairs approach
-            keyValuePairs.forEach(pair => {
-                if (pair.key && pair.value) {
-                    const color = getColorForValue(pair.value)
-                    const styleValue = `fill: ${color}; stroke: #333; stroke-width: 0.5;`
+            }
 
-                    // Try to find element by ID first
-                    styledSvg = styledSvg.replace(
-                        new RegExp(`(id="${pair.key}"[^>]*)(style="[^"]*")`, 'g'),
-                        `$1style="${styleValue}"`
-                    )
+            if (points.length === 0) return { x: 0, y: 0 }
 
-                    // If not found by ID, try by class or direct element match
-                    if (!styledSvg.includes(`fill: ${color}`)) {
-                        styledSvg = styledSvg.replace(
-                            new RegExp(`(class="${pair.key}"[^>]*)(style="[^"]*")`, 'g'),
-                            `$1style="${styleValue}"`
-                        )
-                    }
+            // Calculate bounding box
+            const xCoords = points.map(p => p.x)
+            const yCoords = points.map(p => p.y)
 
-                    // If still not found, try to add style to elements with matching ID
-                    if (!styledSvg.includes(`fill: ${color}`)) {
-                        styledSvg = styledSvg.replace(
-                            new RegExp(`id="${pair.key}"([^>]*)>`, 'g'),
-                            `id="${pair.key}"$1 style="${styleValue}">`
-                        )
-                    }
-                }
-            })
+            const minX = Math.min(...xCoords)
+            const maxX = Math.max(...xCoords)
+            const minY = Math.min(...yCoords)
+            const maxY = Math.max(...yCoords)
+
+            return {
+                x: (minX + maxX) / 2,
+                y: (minY + maxY) / 2
+            }
         }
+
+        // Find all SVG elements with id attributes and add labels
+        const idMatches = styledSvg.matchAll(/id="([^"]+)"/g)
+        const labelElements: string[] = []
+
+        for (const match of idMatches) {
+            const svgElementId = match[1]
+            const value = valueMap.get(svgElementId)
+
+            if (value !== undefined) {
+                // Apply color styling
+                const color = getColorForValue(value)
+                const styleValue = `fill: ${color}; stroke: #333; stroke-width: 0.5;`
+
+                // Style the path element
+                styledSvg = styledSvg.replace(
+                    new RegExp(`(id="${svgElementId}"[^>]*?)(?=\\s|>)`, 'g'),
+                    `$1 style="${styleValue}"`
+                )
+
+                // Extract path data for centroid calculation
+                const pathMatch = styledSvg.match(new RegExp(`<path[^>]*id="${svgElementId}"[^>]*d="([^"]*)"[^>]*`, 'i')) ||
+                    styledSvg.match(new RegExp(`<path[^>]*d="([^"]*)"[^>]*id="${svgElementId}"[^>]*`, 'i'))
+                if (pathMatch) {
+                    const pathData = pathMatch[1]
+                    const centroid = getPathCentroid(pathData)
+
+                    labelElements.push(
+                        `<text x="${centroid.x}" y="${centroid.y}" 
+                           text-anchor="middle" 
+                           dominant-baseline="middle" 
+                           font-family="Arial, sans-serif" 
+                           font-size="12" 
+                           font-weight="bold"
+                           fill="#000" 
+                           stroke="#fff" 
+                           stroke-width="2" 
+                           paint-order="stroke">
+                        <tspan x="${centroid.x}" dy="-5">${svgElementId}</tspan>
+                        <tspan x="${centroid.x}" dy="15">${value}</tspan>
+                    </text>`
+                    )
+                }
+            }
+        }
+
+        // Add labels as text elements before closing </svg> tag
+        if (labelElements.length > 0) {
+            styledSvg = styledSvg.replace('</svg>', `${labelElements.join('\n')}</svg>`)
+        }
+
+        console.log('labelElements:', labelElements.length, labelElements)
+        console.log('closing tag found:', styledSvg.includes('</svg>'))
 
         return styledSvg
     }, [svgContent, csvData, selectedDataColumn, selectedRegionColumn, matchResults, getColorForValue, keyValuePairs])
+
+    // Also update the data classification to include key-value pairs
+    useEffect(() => {
+        const getAllValues = () => {
+            const values = []
+
+            // Add CSV values
+            if (csvData.length > 0 && selectedDataColumn) {
+                const csvValues = csvData.map(row => Number(row[selectedDataColumn])).filter(v => !isNaN(v))
+                values.push(...csvValues)
+            }
+
+            // Add key-value pair values
+            const kvValues = keyValuePairs
+                .map(pair => parseFloat(String(pair.value)))
+                .filter(v => !isNaN(v))
+            values.push(...kvValues)
+
+            return values
+        }
+
+        const allValues = getAllValues()
+        if (allValues.length > 0) {
+            const classification = classifyData(allValues, classificationMethod, numberOfBuckets)
+            setDataClassification(classification)
+        }
+    }, [csvData, selectedDataColumn, classificationMethod, numberOfBuckets, classifyData, setDataClassification, keyValuePairs])
 
     // Save map functionality
     const saveMap = useCallback(async () => {
@@ -699,11 +781,11 @@ function SVGFullScreenContent() {
             </div>
 
             {/* Main content area */}
-            <div className="flex flex-col lg:flex-row gap-2">
+            <div className="flex flex-col lg:flex-row gap-2  h-[calc(100vh-73px)]">
                 {/* Left half - SVG Map Editor */}
-                <div className="w-full lg:w-1/2 p-1 md:p-2">
-                    <Card className="h-full flex flex-col border-0 md:border shadow-none md:shadow-sm">
-                        <CardContent className="flex-1 flex flex-col p-1 md:p-3">
+                <div className="w-full lg:w-1/2 p-1 md:p-2 h-screen lg:h-full">
+                    <Card className="flex flex-col border-0 md:border shadow-none md:shadow-sm">
+                        <CardContent className="flex-1 flex flex-col p-1 md:p-3 min-h-0">
                             {src ? (
                                 <div className="flex flex-col h-full">
                                     <div className="text-center mb-2 flex-shrink-0">
@@ -712,24 +794,32 @@ function SVGFullScreenContent() {
                                             {src.split('/').pop()}
                                         </p>
                                     </div>
-                                    <div className="flex-1 min-h-0 flex items-center justify-center border border-dashed border-muted-foreground/30 rounded p-1 md:p-2 map-container">
+                                    <div className="flex-1 min-h-0 flex items-center justify-center border border-dashed border-muted-foreground/30 rounded p-1 md:p-2 map-container relative overflow-hidden">
                                         {isLoadingSvg ? (
                                             <div className="flex items-center gap-2">
                                                 <div className="animate-spin h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full" />
                                                 <span className="text-sm text-muted-foreground">Loading SVG...</span>
                                             </div>
                                         ) : svgContent ? (
-                                            <div
-                                                className="w-full h-full"
-                                                dangerouslySetInnerHTML={{ __html: getStyledSvgContent() }}
-                                                style={{ minHeight: 0, minWidth: 0 }}
-                                            />
+                                            <>
+                                                <div
+                                                    className="w-full h-full"
+                                                    dangerouslySetInnerHTML={{ __html: getStyledSvgContent() }}
+                                                    style={{ minHeight: 0, minWidth: 0 }}
+                                                />
+                                                <MapLegend />
+
+                                            </>
+
                                         ) : (
                                             <img
                                                 src={src}
                                                 alt={alt}
                                                 className="w-full h-full object-contain"
                                             />
+
+
+
                                         )}
                                     </div>
                                 </div>
@@ -854,14 +944,14 @@ function SVGFullScreenContent() {
                                                         }}
                                                         className="flex-1"
                                                     >
-                                                        Clear
+                                                        Delete CSV
                                                     </Button>
                                                     <Button
                                                         size="sm"
                                                         className="flex-1"
                                                         onClick={populateFromCSV}
                                                     >
-                                                        Apply to Table
+                                                        Create Map
                                                     </Button>
                                                 </div>
 
@@ -988,15 +1078,15 @@ function SVGFullScreenContent() {
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <Settings className="h-5 w-5" />
-                                        Region Matching
+                                        Region Matching. Does fuzzy matching of geometry with CSV region keys.
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     {availableRegions.length > 0 && (
                                         <div className="space-y-4">
                                             <div className="text-sm text-muted-foreground">
-                                                Found {availableRegions.length} regions in SVG: {availableRegions.slice(0, 5).join(', ')}
-                                                {availableRegions.length > 5 && ` and ${availableRegions.length - 5} more...`}
+                                                Found {availableRegions.length} regions in SVG{ }
+
                                             </div>
 
                                             {matchResults.length > 0 && (
@@ -1246,8 +1336,8 @@ function SVGFullScreenContent() {
 
 export default function SVGFullScreen() {
     return (
-        // <Suspense fallback={<MapEditorSkeleton />}>
-        <SVGFullScreenContent />
-        // </Suspense>
+        <Suspense fallback={<MapEditorSkeleton />}>
+            <SVGFullScreenContent />
+        </Suspense>
     )
 }
