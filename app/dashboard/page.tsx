@@ -35,7 +35,8 @@ export default function Page() {
           trigger={
             <div className="group bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
               <SVGEmbed
-                src="/world_mercator_india_highlighted.svg"
+                // src="/world_mercator_india_highlighted.svg"
+                src="/world_mercator_india_nigeria_highlighted.svg"
                 alt="World Map"
               />
             </div>
